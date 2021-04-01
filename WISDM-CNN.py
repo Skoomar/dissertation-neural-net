@@ -1,3 +1,5 @@
+# https://towardsdatascience.com/human-activity-recognition-har-tutorial-with-keras-and-core-ml-part-1-8c05e365dfa0
+
 import tensorflow as tf
 from tensorflow.keras import models, layers
 import matplotlib.pyplot as plt
