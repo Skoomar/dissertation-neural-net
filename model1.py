@@ -65,18 +65,38 @@ def plot_activity(activity, data):
 # avoids problem of e.g. some activities having 5 records in training and only 1 in test while others have 2 in training
 # and 4 in test
 def split_training_test(data, labels):
-    activity_ids = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'O', 'P', 'Q', 'R', 'S']
-    train_x = pd.DataFrame(columns=data.columns.values)
-    train_y = pd.DataFrame(columns=data.columns.values)
-    test_x = pd.DataFrame(columns=data.columns.values)
-    test_y = pd.DataFrame(columns=data.columns.values)
+    # activity_ids = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'O', 'P', 'Q', 'R', 'S']
+    encoded_activity_ids = np.arange(18)
+    train_data = np.empty((0, data.shape[1], 3))
+    train_labels = np.empty((0))
+    test_data = np.empty((0, data.shape[1], 3))
+    test_labels = np.empty((0))
+
     # TODO: change it to work based on the segments not individual things
-    for a_id in activity_ids:
-        activity_set = dataset[dataset['activity'] == a_id]
-        split = np.random.rand(len(activity_set['activity'])) < 0.70
-        train = train.append(activity_set[split])
-        test = test.append(activity_set[~split])
-    return train, test
+    # find segments corresponding to each activity label and split them 70:30
+    for a_id in encoded_activity_ids:
+        matching_indexes = np.where(labels == a_id)[0]
+        current_data = data[matching_indexes]
+        current_labels = labels[matching_indexes]
+
+        # calculate a new random split for every activity label
+        # TODO: try seeing what putting the same split for every label does to results
+        split = np.random.rand(len(matching_indexes)) < 0.70
+        # print(current_data[split])
+        train_data = np.append(train_data, current_data[split], axis=0)
+        train_labels = np.append(train_labels, current_labels[split])
+        test_data = np.append(test_data, current_data[~split], axis=0)
+        test_labels = np.append(test_labels, current_labels[~split])
+        # train_data.append(current_data[split])
+        # train_labels.append(current_labels[split])
+        # test_data.append(current_data[~split])
+        # test_labels.append(current_labels[~split])
+    #     current_data = dataset[dataset['activity'] == a_id]
+    # np_train_data = np.asarray(train_data, dtype=np.float32)
+    # np_train_labels = np.asarray(train_labels)
+    # np_test_data = np.asarray(test_data, dtype=np.float32)
+    # np_test_labels = np.asarray(test_labels)
+    return train_data, train_labels, test_data, test_labels
 
 
 def create_segments_and_labels(data, time_steps, step, label_name):
@@ -97,8 +117,6 @@ def create_segments_and_labels(data, time_steps, step, label_name):
 
     # bring segments into a better shape
     reshaped_segments = np.asarray(segments, dtype=np.float32).reshape(-1, time_steps, N_FEATURES)
-    print(reshaped_segments[0])
-    print(le.inverse_transform(labels))
     labels = np.asarray(labels)
 
     return reshaped_segments, labels
@@ -122,10 +140,13 @@ TIME_PERIODS = 80
 STEP_DISTANCE = 40
 
 
-x_train, y_train = create_segments_and_labels(dataset, TIME_PERIODS, STEP_DISTANCE, ENCODED_LABEL)
+segments, labels = create_segments_and_labels(dataset, TIME_PERIODS, STEP_DISTANCE, ENCODED_LABEL)
 
-train_x, train_y, test_x, test_y = split_training_test(x_train, y_train)
+# train_x, train_y, test_x, test_y = split_training_test(x_train, y_train)
 
-# split_training_test(dataset)
+train_x, train_y, test_x, test_y = split_training_test(segments, labels)
 
-# print(dataset[dataset['activity'] == 'A'])
+print(segments.shape, labels.shape)
+print(train_x.shape, train_y.shape)
+print(test_x.shape, test_y.shape)
+print(segments[1], "\n\n", train_x[0])
