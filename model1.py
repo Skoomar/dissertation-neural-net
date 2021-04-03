@@ -2,8 +2,10 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import stats
+from sklearn import preprocessing
 import tensorflow as tf
 
+pd.options.display.float_format = '{:.1f}'.format
 plt.style.use('ggplot')
 
 
@@ -30,7 +32,6 @@ def read_data(file_path):
     data['z-axis'] = data['z-axis'].apply(convert_to_float)
     # remove missing values
     data.dropna(axis=0, how='any', inplace=True)
-
     return data
 
 
@@ -63,18 +64,68 @@ def plot_activity(activity, data):
 # split dataset so there is an appropriate amount of records for EACH activity in the training and test sets
 # avoids problem of e.g. some activities having 5 records in training and only 1 in test while others have 2 in training
 # and 4 in test
-def split_training_test(data):
+def split_training_test(data, labels):
     activity_ids = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'O', 'P', 'Q', 'R', 'S']
-    for id in activity_ids:
-        count = 0
-        for i in data['activity']:
-            if id == i:
-                count += 1
-        print(id, ":", count)
+    train_x = pd.DataFrame(columns=data.columns.values)
+    train_y = pd.DataFrame(columns=data.columns.values)
+    test_x = pd.DataFrame(columns=data.columns.values)
+    test_y = pd.DataFrame(columns=data.columns.values)
+    # TODO: change it to work based on the segments not individual things
+    for a_id in activity_ids:
+        activity_set = dataset[dataset['activity'] == a_id]
+        split = np.random.rand(len(activity_set['activity'])) < 0.70
+        train = train.append(activity_set[split])
+        test = test.append(activity_set[~split])
+    return train, test
+
+
+def create_segments_and_labels(data, time_steps, step, label_name):
+    # features are signals on the x, y, and z axes
+    N_FEATURES = 3
+
+    segments = []
+    labels = []
+    for i in range(0, len(data) - time_steps, step):
+        xs = data['x-axis'].values[i: i + time_steps]
+        ys = data['y-axis'].values[i: i + time_steps]
+        zs = data['z-axis'].values[i: i + time_steps]
+
+        # define this segment with the activity that occurs most in this segment
+        label = stats.mode(data[label_name][i: i + time_steps])[0][0]
+        segments.append([xs, ys, zs])
+        labels.append(label)
+
+    # bring segments into a better shape
+    reshaped_segments = np.asarray(segments, dtype=np.float32).reshape(-1, time_steps, N_FEATURES)
+    print(reshaped_segments[0])
+    print(le.inverse_transform(labels))
+    labels = np.asarray(labels)
+
+    return reshaped_segments, labels
+
 
 dataset = read_data('wisdm-dataset/raw/watch/accel/data_1600_accel_watch.txt')
 dataset['x-axis'] = feature_normalise(dataset['x-axis'])
 dataset['y-axis'] = feature_normalise(dataset['y-axis'])
 dataset['z-axis'] = feature_normalise(dataset['z-axis'])
 
-split_training_test(dataset)
+# encode the labels into numerical representations so the neural network can work with them
+ENCODED_LABEL = 'ActivityEncoded'
+# use LabelEncoder to convert from String to Integer
+le = preprocessing.LabelEncoder()
+# add the new encoded labels as a column in the dataset
+dataset[ENCODED_LABEL] = le.fit_transform(dataset['activity'].values.ravel())
+
+# number of steps within one time segment
+TIME_PERIODS = 80
+# steps to take from one segment to next - if same as TIME_PERIODS, then no overlap occurs between segments
+STEP_DISTANCE = 40
+
+
+x_train, y_train = create_segments_and_labels(dataset, TIME_PERIODS, STEP_DISTANCE, ENCODED_LABEL)
+
+train_x, train_y, test_x, test_y = split_training_test(x_train, y_train)
+
+# split_training_test(dataset)
+
+# print(dataset[dataset['activity'] == 'A'])

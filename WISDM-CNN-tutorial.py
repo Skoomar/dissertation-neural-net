@@ -115,7 +115,7 @@ train_x = reshaped_segments[train_test_split]
 train_y = labels[train_test_split]
 test_x = reshaped_segments[~train_test_split]
 test_y = labels[~train_test_split]
-
+print(train_x)
 # Define some helper functions and configuration variables to for reusability and readiblity
 
 input_height = 1
