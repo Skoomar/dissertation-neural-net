@@ -8,6 +8,7 @@ from tensorflow.keras import models, layers
 from keras import callbacks
 from keras.utils import np_utils
 
+
 pd.options.display.float_format = '{:.1f}'.format
 plt.style.use('ggplot')
 
@@ -136,9 +137,22 @@ STEP_DISTANCE = 40
 
 segments, labels = create_segments_and_labels(dataset, TIME_PERIODS, STEP_DISTANCE, ENCODED_LABEL)
 
-# split = np.random.rand(len(matching_indexes)) < 0.70
-# train_x = segments
+# split = np.random.rand(len(segments)) < 0.70
+# train_x = segments[split]
+# train_y = labels[split]
+# test_x = segments[~split]
+# test_y = labels[~split]
 train_x, train_y, test_x, test_y = split_training_test(segments, labels)
+
+a=np.arange(18)
+for i in a:
+    tr=len(np.where(train_y == i)[0])
+    te=len(np.where(test_y == i)[0])
+    print("train for label", i, ":", tr)
+    print("test for label", i, ":", te)
+    print("%:", (tr/(tr+te)) * 100)
+    print("%:", (te/(tr+te)) * 100)
+    print("sum:", tr+te, "\n")
 
 # store the following variables to use for constructing the neural network
 # no of time periods within in one record (we've set it to 80 because each data point has an interval of 4 seconds)
@@ -187,14 +201,16 @@ print(model.summary())
 model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 
 # our Hyperparameters - reasons to use certain hyperparameters: https://towardsdatascience.com/epoch-vs-iterations-vs-batch-size-4dfb9c7ce9c9
-BATCH_SIZE = 400
-EPOCHS = 50
+# BATCH_SIZE = 400
+BATCH_SIZE = 32
+EPOCHS = 100
 
 history = model.fit(train_x,
                     train_y_hot,
                     batch_size=BATCH_SIZE,
                     epochs=EPOCHS,
                     # callbacks=callbacks_list,
+                    # validation_data=(test_x, testy_y_hot),
                     verbose=1)
 
 test_loss, test_accuracy = model.evaluate(test_x, testy_y_hot, verbose=2)
