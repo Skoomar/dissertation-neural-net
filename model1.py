@@ -4,6 +4,9 @@ import matplotlib.pyplot as plt
 from scipy import stats
 from sklearn import preprocessing
 import tensorflow as tf
+from tensorflow.keras import models, layers
+from keras import callbacks
+from keras.utils import np_utils
 
 pd.options.display.float_format = '{:.1f}'.format
 plt.style.use('ggplot')
@@ -82,20 +85,12 @@ def split_training_test(data, labels):
         # calculate a new random split for every activity label
         # TODO: try seeing what putting the same split for every label does to results
         split = np.random.rand(len(matching_indexes)) < 0.70
-        # print(current_data[split])
+        # axis set to 0 to stop it flattening the data when it appends
         train_data = np.append(train_data, current_data[split], axis=0)
         train_labels = np.append(train_labels, current_labels[split])
         test_data = np.append(test_data, current_data[~split], axis=0)
         test_labels = np.append(test_labels, current_labels[~split])
-        # train_data.append(current_data[split])
-        # train_labels.append(current_labels[split])
-        # test_data.append(current_data[~split])
-        # test_labels.append(current_labels[~split])
-    #     current_data = dataset[dataset['activity'] == a_id]
-    # np_train_data = np.asarray(train_data, dtype=np.float32)
-    # np_train_labels = np.asarray(train_labels)
-    # np_test_data = np.asarray(test_data, dtype=np.float32)
-    # np_test_labels = np.asarray(test_labels)
+
     return train_data, train_labels, test_data, test_labels
 
 
@@ -139,14 +134,69 @@ TIME_PERIODS = 80
 # steps to take from one segment to next - if same as TIME_PERIODS, then no overlap occurs between segments
 STEP_DISTANCE = 40
 
-
 segments, labels = create_segments_and_labels(dataset, TIME_PERIODS, STEP_DISTANCE, ENCODED_LABEL)
 
-# train_x, train_y, test_x, test_y = split_training_test(x_train, y_train)
-
+# split = np.random.rand(len(matching_indexes)) < 0.70
+# train_x = segments
 train_x, train_y, test_x, test_y = split_training_test(segments, labels)
 
-print(segments.shape, labels.shape)
-print(train_x.shape, train_y.shape)
-print(test_x.shape, test_y.shape)
-print(segments[1], "\n\n", train_x[0])
+# store the following variables to use for constructing the neural network
+# no of time periods within in one record (we've set it to 80 because each data point has an interval of 4 seconds)
+# and there are 3 sensors in this dataset
+num_time_periods, num_sensors = train_x.shape[1], train_x.shape[2]
+# the number of different activities we have - will be used to define the number of output nodes in our network
+num_classes = le.classes_.size
+
+# flatten the data so the network so we can input it into the network
+# TODO: pretty sure you can just have a 'Flatten' input layer in the network instead of doing it manually here
+input_shape = (num_time_periods * num_sensors)
+train_x = train_x.reshape(train_x.shape[0], input_shape)
+test_x = test_x.reshape(test_x.shape[0], input_shape)
+
+# convert all data to float32 so TF can read it
+train_x = train_x.astype('float32')
+train_y = train_y.astype('float32')
+test_x = test_x.astype('float32')
+test_y = test_y.astype('float32')
+
+# perform one-hot encoding on the labels
+# TODO: try doing this the way the other tutorial does so i don't have to import keras as well
+train_y_hot = np_utils.to_categorical(train_y, num_classes)
+testy_y_hot = np_utils.to_categorical(test_y, num_classes)
+
+# Make the neural network #
+model = models.Sequential()
+model.add(layers.Dense(100, activation='relu', input_shape=(input_shape,)))
+model.add(layers.Dense(100, activation='relu'))
+model.add(layers.Dense(100, activation='relu'))
+model.add(layers.Flatten())
+model.add(layers.Dense(num_classes, activation='softmax'))
+print(model.summary())
+
+# Compile and Train model #
+
+# create an early callback monitor for training accuracy - if accuracy doesn't improve for 2 epochs, then stop training
+# TODO: don't think i really need this
+# callbacks_list = [
+#     callbacks.ModelCheckpoint(
+#         filepath='best_model.{epoch:02d}-{val_loss:.2f}.h5',
+#         monitor='val_loss', save_best_only=True),
+#     callbacks.EarlyStopping(monitor='acc', patience=1)
+# ]
+
+model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+# our Hyperparameters - reasons to use certain hyperparameters: https://towardsdatascience.com/epoch-vs-iterations-vs-batch-size-4dfb9c7ce9c9
+BATCH_SIZE = 400
+EPOCHS = 50
+
+history = model.fit(train_x,
+                    train_y_hot,
+                    batch_size=BATCH_SIZE,
+                    epochs=EPOCHS,
+                    # callbacks=callbacks_list,
+                    verbose=1)
+
+test_loss, test_accuracy = model.evaluate(test_x, testy_y_hot, verbose=2)
+
+print(test_accuracy)
