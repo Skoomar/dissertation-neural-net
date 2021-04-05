@@ -7,6 +7,7 @@ import tensorflow as tf
 from tensorflow.keras import models, layers
 from keras import callbacks
 from keras.utils import np_utils
+import basic_model
 
 
 pd.options.display.float_format = '{:.1f}'.format
@@ -118,7 +119,7 @@ def create_segments_and_labels(data, time_steps, step, label_name):
     return reshaped_segments, labels
 
 
-dataset = read_data('wisdm-dataset/raw/watch/accel/data_1600_accel_watch.txt')
+dataset = read_data('wisdm-dataset/raw/watch/accel/data_1627_accel_watch.txt')
 dataset['x-axis'] = feature_normalise(dataset['x-axis'])
 dataset['y-axis'] = feature_normalise(dataset['y-axis'])
 dataset['z-axis'] = feature_normalise(dataset['z-axis'])
@@ -144,15 +145,15 @@ segments, labels = create_segments_and_labels(dataset, TIME_PERIODS, STEP_DISTAN
 # test_y = labels[~split]
 train_x, train_y, test_x, test_y = split_training_test(segments, labels)
 
-a=np.arange(18)
-for i in a:
-    tr=len(np.where(train_y == i)[0])
-    te=len(np.where(test_y == i)[0])
-    print("train for label", i, ":", tr)
-    print("test for label", i, ":", te)
-    print("%:", (tr/(tr+te)) * 100)
-    print("%:", (te/(tr+te)) * 100)
-    print("sum:", tr+te, "\n")
+# a=np.arange(18)
+# for i in a:
+#     tr=len(np.where(train_y == i)[0])
+#     te=len(np.where(test_y == i)[0])
+#     print("train for label", i, ":", tr)
+#     print("test for label", i, ":", te)
+#     print("%:", (tr/(tr+te)) * 100)
+#     print("%:", (te/(tr+te)) * 100)
+#     print("sum:", tr+te, "\n")
 
 # store the following variables to use for constructing the neural network
 # no of time periods within in one record (we've set it to 80 because each data point has an interval of 4 seconds)
@@ -176,43 +177,15 @@ test_y = test_y.astype('float32')
 # perform one-hot encoding on the labels
 # TODO: try doing this the way the other tutorial does so i don't have to import keras as well
 train_y_hot = np_utils.to_categorical(train_y, num_classes)
-testy_y_hot = np_utils.to_categorical(test_y, num_classes)
+test_y_hot = np_utils.to_categorical(test_y, num_classes)
 
-# Make the neural network #
-model = models.Sequential()
-model.add(layers.Dense(100, activation='relu', input_shape=(input_shape,)))
-model.add(layers.Dense(100, activation='relu'))
-model.add(layers.Dense(100, activation='relu'))
-model.add(layers.Flatten())
-model.add(layers.Dense(num_classes, activation='softmax'))
-print(model.summary())
+model = basic_model.create_model(input_shape, num_classes)
 
-# Compile and Train model #
-
-# create an early callback monitor for training accuracy - if accuracy doesn't improve for 2 epochs, then stop training
-# TODO: don't think i really need this
-# callbacks_list = [
-#     callbacks.ModelCheckpoint(
-#         filepath='best_model.{epoch:02d}-{val_loss:.2f}.h5',
-#         monitor='val_loss', save_best_only=True),
-#     callbacks.EarlyStopping(monitor='acc', patience=1)
-# ]
-
-model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
-
-# our Hyperparameters - reasons to use certain hyperparameters: https://towardsdatascience.com/epoch-vs-iterations-vs-batch-size-4dfb9c7ce9c9
-# BATCH_SIZE = 400
-BATCH_SIZE = 32
-EPOCHS = 100
-
-history = model.fit(train_x,
-                    train_y_hot,
-                    batch_size=BATCH_SIZE,
-                    epochs=EPOCHS,
-                    # callbacks=callbacks_list,
-                    # validation_data=(test_x, testy_y_hot),
-                    verbose=1)
-
-test_loss, test_accuracy = model.evaluate(test_x, testy_y_hot, verbose=2)
-
-print(test_accuracy)
+# trained_model = basic_model.train_model(model, train_x, train_y_hot, verbose=0)
+# print(basic_model.evaluate_model(trained_model, test_x, test_y_hot, verbose=0))
+#
+# trained_model = basic_model.train_model(model, train_x, train_y_hot, verbose=0)
+# print(basic_model.evaluate_model(trained_model, test_x, test_y_hot, verbose=0))
+#
+# trained_model = basic_model.train_model(model, train_x, train_y_hot, verbose=0)
+# print(basic_model.evaluate_model(trained_model, test_x, test_y_hot, verbose=0))

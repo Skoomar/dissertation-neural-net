@@ -1,3 +1,5 @@
+# made by following https://towardsdatascience.com/human-activity-recognition-har-tutorial-with-keras-and-core-ml-part-1-8c05e365dfa0
+
 from tensorflow.keras import models, layers
 
 
@@ -21,7 +23,7 @@ def create_model(input_shape, num_classes):
 #     callbacks.EarlyStopping(monitor='acc', patience=1)
 # ]
 
-def train_model(model, train_x, train_y, batch_size=400, epochs=50):
+def train_model(model, train_x, train_y, batch_size=400, epochs=50, verbose=1):
     model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 
     # our Hyperparameters - reasons to use certain hyperparameters: https://towardsdatascience.com/epoch-vs-iterations-vs-batch-size-4dfb9c7ce9c9
@@ -35,14 +37,11 @@ def train_model(model, train_x, train_y, batch_size=400, epochs=50):
                         epochs=epochs,
                         # callbacks=callbacks_list,
                         # validation_data=(test_x, testy_y_hot),
-                        verbose=1)
+                        verbose=verbose)
     return model
 
 
-def evaluate_model(model, test_x, test_y):
-    test_loss, test_accuracy = model.evaluate(test_x, test_y, verbose=2)
+def evaluate_model(model, test_x, test_y, verbose=2):
+    test_loss, test_accuracy = model.evaluate(test_x, test_y, verbose=verbose)
+    return test_accuracy
 
-    print(test_accuracy)
-
-
-create_model()
