@@ -65,27 +65,37 @@ def merge_phone_watch_data(phone, watch):
     return merged_data
 
 
-phone_accel = read_data('wisdm-dataset/raw/phone/accel/data_1600_accel_phone.txt')
-phone_gyro = read_data('wisdm-dataset/raw/phone/gyro/data_1600_gyro_phone.txt')
-watch_accel = read_data('wisdm-dataset/raw/watch/accel/data_1600_accel_watch.txt')
-watch_gyro = read_data('wisdm-dataset/raw/watch/gyro/data_1600_gyro_watch.txt')
+def merge_subject_data(subject_id):
+    phone_accel = read_data('wisdm-dataset/raw/phone/accel/data_16' + subject_id + '_accel_phone.txt')
+    phone_gyro = read_data('wisdm-dataset/raw/phone/gyro/data_16' + subject_id + '_gyro_phone.txt')
+    watch_accel = read_data('wisdm-dataset/raw/watch/accel/data_16' + subject_id + '_accel_watch.txt')
+    watch_gyro = read_data('wisdm-dataset/raw/watch/gyro/data_16' + subject_id + '_gyro_watch.txt')
 
-phone_merge = match_accel_and_gyro_data(phone_accel, phone_gyro, 'phone')
-watch_merge = match_accel_and_gyro_data(watch_accel, watch_gyro, 'watch')
-# pd.set_option('display.max_rows', None)
-pd.set_option('display.max_columns', None)
-pd.set_option('display.width', None)
-# pd.set_option('display.max_colwidth', -1)
-complete_data = merge_phone_watch_data(phone_merge, watch_merge)
-# print(complete_data)
+    phone_merge = match_accel_and_gyro_data(phone_accel, phone_gyro, 'phone')
+    watch_merge = match_accel_and_gyro_data(watch_accel, watch_gyro, 'watch')
+    complete_data = merge_phone_watch_data(phone_merge, watch_merge)
+    return complete_data
 
-activity_ids = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'O', 'P', 'Q', 'R', 'S']
-for i in activity_ids:
-    print("\nphone activity", i, len(phone_merge.loc[phone_merge['activity'] == i]))
-    print("watch activity", i, len(watch_merge.loc[watch_merge['activity'] == i]))
-    print("complete activity", i, len(complete_data.loc[complete_data['activity'] == i]))
 
-print(len(phone_merge))
-print(len(watch_merge))
-print(len(complete_data))
-complete_data.to_csv('1600_merged_data.txt')
+def merge_all_wisdm():
+    for i in range(51):
+        str_id = str(i)
+        if i < 10:
+            str_id = '0' + str_id
+        subject_data = merge_subject_data(str_id)
+        subject_data.to_csv('wisdm-merged/16' + str_id + '_merged_data.txt')
+
+
+merge_all_wisdm()
+# TODO: fix the indexes on the big merge, think I just need to reset_index at the end of merge_phone_watch_data
+
+# activity_ids = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'O', 'P', 'Q', 'R', 'S']
+# for i in activity_ids:
+#     print("\nphone activity", i, len(phone_merge.loc[phone_merge['activity'] == i]))
+#     print("watch activity", i, len(watch_merge.loc[watch_merge['activity'] == i]))
+#     print("complete activity", i, len(complete_data.loc[complete_data['activity'] == i]))
+#
+# print(len(phone_merge))
+# print(len(watch_merge))
+# print(len(complete_data))
+# complete_data.to_csv('1600_merged_data.txt')
