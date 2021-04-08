@@ -61,13 +61,6 @@ def manual_merge(d1, d2):
 
 
 def merge_phone_watch_data(phone, watch):
-    # merged_data = pd.merge(phone,
-    #                        watch[['user-id', 'activity',
-    #                               'x-axis_accel_watch', 'y-axis_accel_watch', 'z-axis_accel_watch',
-    #                               'x-axis_gyro_watch', 'y-axis_gyro_watch', 'z-axis_gyro_watch']],
-    #                        how='outer', on=['user-id', 'activity'])
-    # return merged_data
-
     merged_data = pd.DataFrame(
         columns=['user-id', 'activity', 'timestamp', 'x-axis_accel_phone', 'y-axis_accel_phone', 'z-axis_accel_phone',
                  'x-axis_gyro_phone', 'y-axis_gyro_phone', 'z-axis_gyro_phone', 'x-axis_accel_watch',
@@ -83,24 +76,9 @@ def merge_phone_watch_data(phone, watch):
                           'x-axis_gyro_watch', 'y-axis_gyro_watch', 'z-axis_gyro_watch']
             ] = watch_subset[['x-axis_accel_watch', 'y-axis_accel_watch', 'z-axis_accel_watch',
                               'x-axis_gyro_watch', 'y-axis_gyro_watch', 'z-axis_gyro_watch']]
-            # phone_subset.dropna(axis=0, how='any', inplace=True)
             merged_data = merged_data.append(phone_subset, ignore_index=True)
     merged_data.dropna(axis=0, how='any', inplace=True)
-    # for index, row in phone_subset.iterrows():
-    #     if (row['user-id'] == watch_subset.loc[index]['user-id']) \
-    #             and (row['activity'] == watch_subset.loc[index]['activity']):
-    #         # merge_row = pd.merge(row,
-    #         #                      watch_subset.loc[index][['user-id', 'activity',
-    #         #                                               'x-axis_accel_watch', 'y-axis_accel_watch',
-    #         #                                               'z-axis_accel_watch',
-    #         #                                               'x-axis_gyro_watch', 'y-axis_gyro_watch',
-    #         #                                               'z-axis_gyro_watch']],
-    #         #                      on=['user-id', 'activity'])
-    #         # print(merge_row)
-    #         print(watch_subset.loc[index][['user-id', 'activity']])
-    #         # merged_data = merged_data.append(phone_subset.loc[index], ignore_index=True)
-    #     else:
-    #         raise (ValueError('Merging of phone and watch data found mismatch of either user-id or activity label'))
+
     return merged_data
 
 
@@ -115,12 +93,18 @@ watch_merge = match_accel_and_gyro_data(watch_accel, watch_gyro, 'watch')
 # pd.set_option('display.max_columns', None)
 # pd.set_option('display.width', None)
 # pd.set_option('display.max_colwidth', -1)
-merged_data = merge_phone_watch_data(phone_merge, watch_merge)
-print(merged_data)
+complete_data = merge_phone_watch_data(phone_merge, watch_merge)
+# print(complete_data)
 
 activity_ids = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'O', 'P', 'Q', 'R', 'S']
-# for i in activity_ids:
-#     print("activity", i, len(phone_merge.loc[phone_merge['activity'] == i]))
+for i in activity_ids:
+    print("\nphone activity", i, len(phone_merge.loc[phone_merge['activity'] == i]))
+    print("watch activity", i, len(watch_merge.loc[watch_merge['activity'] == i]))
+    print("complete activity", i, len(complete_data.loc[complete_data['activity'] == i]))
+
+print(len(phone_merge))
+print(len(watch_merge))
+print(len(complete_data))
 
 # phone_watch_merge = merge_phone_watch_data(phone_merge, watch_merge)
 # phone_watch_merge.to_csv('phone_watch_merge.txt')
