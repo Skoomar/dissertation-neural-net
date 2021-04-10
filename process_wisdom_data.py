@@ -42,22 +42,18 @@ def manual_merge_accel_gyro_data(accel_subset, gyro_subset, device):
     accel_subset = accel_subset.dropna(axis=0, how='any').reset_index(drop=True)
     return accel_subset
 
-# TODO: FIGURE WHY THE FUCK IT'S SAYING A TIMESTAMP IS NOT IN THE FUCKING COLUMN WHEN IT CLEARLY FUCKING IS
+
 def fill_subset(merged_data, accel_subset, gyro_subset, device, target_size):
-    """If timestamps of accel_row and gyro data are only partially matched up then use this to fill in remaining values"""
-    # print(merged_data)
+    """If timestamps of accel_row and gyro data are only partially
+        matched up then use this to fill in remaining values"""
     gyro_index = 0
     for accel_index, accel_row in accel_subset.iterrows():
         if len(merged_data) == target_size:
             break
-        # print(accel_row['timestamp'])
-        # print(99230964056255 in merged_data['timestamp'])
-        if accel_row['timestamp'] not in merged_data['timestamp']:
+        if accel_row['timestamp'] not in merged_data['timestamp'].values:
             while gyro_index < len(gyro_subset):
                 gyro_row = gyro_subset.loc[gyro_index]
-                # print(gyro_row['timestamp'])
-                # print(gyro_row['timestamp'] in merged_data['timestamp'])
-                if gyro_row['timestamp'] not in merged_data['timestamp']:
+                if gyro_row['timestamp'] not in merged_data['timestamp'].values:
                     new_row = pd.DataFrame(data={'user-id': [accel_row['user-id']],
                                                  'activity': [accel_row['activity']],
                                                  'timestamp': [accel_row['timestamp']],
@@ -72,13 +68,11 @@ def fill_subset(merged_data, accel_subset, gyro_subset, device, target_size):
                     gyro_index += 1
                     break
                 gyro_index += 1
-
-    # print(merged_data)
+    return merged_data.sort_values(by='timestamp').reset_index(drop=True)
 
 
 def merge_accel_gyro_data(accel, gyro, device):
     """Merge accelerometer and gyroscope data from the given device into the same dataframe"""
-    print(99019527581830 in accel['timestamp'])
     merged_data = pd.DataFrame(
         columns=['user-id', 'activity', 'timestamp',
                  'x-axis_accel_' + device, 'y-axis_accel_' + device, 'z-axis_accel_' + device,
@@ -88,8 +82,6 @@ def merge_accel_gyro_data(accel, gyro, device):
     for a_id in activity_ids:
         accel_subset = accel.loc[accel['activity'] == a_id].reset_index(drop=True)
         gyro_subset = gyro.loc[gyro['activity'] == a_id].reset_index(drop=True)
-        # print("\naccel activity", a_id, len(accel_subset))
-        # print("gyro activity", a_id, len(gyro_subset))
         merged_subset = pd.merge(accel_subset, gyro_subset, on=['user-id', 'activity', 'timestamp'])
         merged_subset.rename(columns={'x-axis_x': 'x-axis_accel_' + device,
                                       'y-axis_x': 'y-axis_accel_' + device,
@@ -104,11 +96,9 @@ def merge_accel_gyro_data(accel, gyro, device):
         if len(merged_subset) == 0:
             merged_subset = manual_merge_accel_gyro_data(accel_subset, gyro_subset, device)
         elif len(merged_subset) < min(len(accel_subset), len(gyro_subset)):
-            # unused_gyro_timestamps = pd.concat([accel_subset['timestamp'], gyro_subset['timestamp']]) \
-            #     .drop_duplicates(keep=False)
-            fill_subset(merged_subset, accel_subset, gyro_subset, device, min(len(accel_subset), len(gyro_subset)))
+            merged_subset = fill_subset(merged_subset, accel_subset, gyro_subset, device,
+                                        min(len(accel_subset), len(gyro_subset)))
         merged_data = merged_data.append(merged_subset, ignore_index=True)
-        # print("merged subset, activity:", a_id, len(merged_subset))
     merged_data = merged_data.dropna(axis=0, how='any').reset_index(drop=True)
     return merged_data
 
@@ -154,18 +144,18 @@ def merge_subject_data(subject_id):
     #     print("\n" + subject_id + "\nphone activity", i, len(phone_merge.loc[phone_merge['activity'] == i]))
     #     print("watch activity", i, len(watch_merge.loc[watch_merge['activity'] == i]))
     #     print("complete activity", i, len(complete_data.loc[complete_data['activity'] == i]))
-
-    print(len(phone_merge))
-    print(len(watch_merge))
-    print(len(complete_data))
+    #
+    # print(len(phone_merge))
+    # print(len(watch_merge))
+    # print(len(complete_data))
     return complete_data
 
 
 def merge_all_wisdm(write_to_csv=False):
     """Loop through every test subject in the WISDM dataset and merge their data into the same dataframe"""
-    # for i in range(51):
-    if True:
-        i = 2
+    for i in range(51):
+    # if True:
+    #     i = 2
         str_id = str(i)
         if i < 10:
             str_id = '0' + str_id
@@ -178,7 +168,7 @@ def merge_all_wisdm(write_to_csv=False):
 pd.set_option('display.max_columns', None)
 pd.set_option('display.width', None)
 pd.set_option('display.max_colwidth', None)
-merge_all_wisdm()
+merge_all_wisdm(True)
 # TODO: fix the indexes on the big merge, think I just need to reset_index at the end of merge_phone_watch_data
 # TODO: 1650's data doesn't look complete, only 27000 values
 
@@ -187,8 +177,3 @@ merge_all_wisdm()
 #     print("\nphone activity", i, len(phone_merge.loc[phone_merge['activity'] == i]))
 #     print("watch activity", i, len(watch_merge.loc[watch_merge['activity'] == i]))
 #     print("complete activity", i, len(complete_data.loc[complete_data['activity'] == i]))
-#
-# print(len(phone_merge))
-# print(len(watch_merge))
-# print(len(complete_data))
-# complete_data.to_csv('1600_merged_data.txt')
