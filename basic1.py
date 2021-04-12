@@ -72,6 +72,7 @@ def plot_activity(activity, data):
 def split_training_test(data, labels):
     # activity_ids = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'O', 'P', 'Q', 'R', 'S']
     encoded_activity_ids = np.arange(18)
+    print(data.shape)
     train_data = np.empty((0, data.shape[1], 3))
     train_labels = np.empty((0))
     test_data = np.empty((0, data.shape[1], 3))
@@ -119,7 +120,7 @@ def create_segments_and_labels(data, time_steps, step, label_name):
     return reshaped_segments, labels
 
 
-dataset = read_data('wisdm-dataset/raw/watch/accel/data_1627_accel_watch.txt')
+dataset = read_data('wisdm-dataset/raw/phone/accel/data_1627_accel_phone.txt')
 dataset['x-axis'] = feature_normalise(dataset['x-axis'])
 dataset['y-axis'] = feature_normalise(dataset['y-axis'])
 dataset['z-axis'] = feature_normalise(dataset['z-axis'])
@@ -181,8 +182,8 @@ test_y_hot = np_utils.to_categorical(test_y, num_classes)
 
 model = basic_model.create_model(input_shape, num_classes)
 
-# trained_model = basic_model.train_model(model, train_x, train_y_hot, verbose=0)
-# print(basic_model.evaluate_model(trained_model, test_x, test_y_hot, verbose=0))
+trained_model = basic_model.train_model(model, train_x, train_y_hot, verbose=0)
+print(basic_model.evaluate_model(trained_model, test_x, test_y_hot, verbose=0))
 #
 # trained_model = basic_model.train_model(model, train_x, train_y_hot, verbose=0)
 # print(basic_model.evaluate_model(trained_model, test_x, test_y_hot, verbose=0))

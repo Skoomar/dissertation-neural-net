@@ -44,4 +44,3 @@ def train_model(model, train_x, train_y, batch_size=400, epochs=50, verbose=1):
 def evaluate_model(model, test_x, test_y, verbose=2):
     test_loss, test_accuracy = model.evaluate(test_x, test_y, verbose=verbose)
     return test_accuracy
-

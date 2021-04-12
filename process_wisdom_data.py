@@ -44,6 +44,8 @@ def manual_merge_accel_gyro_data(accel_subset, gyro_subset, device):
 
 
 def fill_subset(merged_data, accel_subset, gyro_subset, device, target_size):
+    print(merged_data.loc[0]['user-id'])
+    print(accel_subset.loc[0]['activity'])
     """If timestamps of accel_row and gyro data are only partially
         matched up then use this to fill in remaining values"""
     gyro_index = 0
@@ -151,11 +153,10 @@ def merge_subject_data(subject_id):
     return complete_data
 
 
-def merge_all_wisdm(write_to_csv=False):
-    """Loop through every test subject in the WISDM dataset and merge their data into the same dataframe"""
+def merge_all_wisdm_by_subject(write_to_csv=False):
+    """Create a file for each subject containing a merging of the data from the
+        accels and gyros of both their phone and watch"""
     for i in range(51):
-    # if True:
-    #     i = 2
         str_id = str(i)
         if i < 10:
             str_id = '0' + str_id
@@ -164,16 +165,25 @@ def merge_all_wisdm(write_to_csv=False):
             subject_data.to_csv('wisdm-merged/16' + str_id + '_merged_data.txt')
 
 
+def merge_all_wisdm_combined(write_to_csv=False):
+    """Create one file containing a merging of all data from all subjects"""
+    complete_merge = pd.DataFrame(columns=['user-id', 'activity', 'timestamp',
+                                           'x-axis_accel_phone', 'y-axis_accel_phone', 'z-axis_accel_phone',
+                                           'x-axis_gyro_phone', 'y-axis_gyro_phone', 'z-axis_gyro_phone',
+                                           'x-axis_accel_watch', 'y-axis_accel_watch', 'z-axis_accel_watch',
+                                           'x-axis_gyro_watch', 'y-axis_gyro_watch', 'z-axis_gyro_watch'])
+    for i in range(51):
+        str_id = str(i)
+        if i < 10:
+            str_id = '0' + str_id
+        subject_data = merge_subject_data(str_id)
+        complete_merge = complete_merge.append(subject_data, ignore_index=True)
+    complete_merge.dropna(axis=0, how='any').reset_index(drop=True)
+    complete_merge.to_csv('wisdm-merged/complete_data.txt')
+
+
 # pd.set_option('display.max_rows', None)
 pd.set_option('display.max_columns', None)
 pd.set_option('display.width', None)
 pd.set_option('display.max_colwidth', None)
-merge_all_wisdm(True)
-# TODO: fix the indexes on the big merge, think I just need to reset_index at the end of merge_phone_watch_data
-# TODO: 1650's data doesn't look complete, only 27000 values
-
-# activity_ids = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'O', 'P', 'Q', 'R', 'S']
-# for i in activity_ids:
-#     print("\nphone activity", i, len(phone_merge.loc[phone_merge['activity'] == i]))
-#     print("watch activity", i, len(watch_merge.loc[watch_merge['activity'] == i]))
-#     print("complete activity", i, len(complete_data.loc[complete_data['activity'] == i]))
+merge_all_wisdm_by_subject()

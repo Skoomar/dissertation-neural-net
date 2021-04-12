@@ -5,7 +5,8 @@ from tensorflow.keras import models, layers
 
 def create_model(input_shape=240, num_classes=18):
     model = models.Sequential()
-    model.add(layers.Conv1D(2, 2, input_shape=(80, 3)))
+    # using filter size 128 and kernel size 10 for this Conv1D layer because: https://arxiv.org/ftp/arxiv/papers/2103/2103.03836.pdf
+    model.add(layers.Conv1D(128, 10, input_shape=(80, 12)))
 
     model.add(layers.Dense(100, activation='relu'))
     model.add(layers.Dense(100, activation='relu'))
