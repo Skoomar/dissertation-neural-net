@@ -121,6 +121,9 @@ def create_segments_and_labels(data, time_steps, step, label_name):
 
 
 dataset = read_data('wisdm-dataset/raw/phone/accel/data_1627_accel_phone.txt')
+
+plot_activity('a', dataset)
+
 dataset['x-axis'] = feature_normalise(dataset['x-axis'])
 dataset['y-axis'] = feature_normalise(dataset['y-axis'])
 dataset['z-axis'] = feature_normalise(dataset['z-axis'])

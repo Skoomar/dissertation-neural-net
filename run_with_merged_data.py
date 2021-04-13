@@ -60,12 +60,8 @@ def plot_axis(ax, x, y, title):
 
 
 def plot_activity(activity, data):
-    fig, (ax0, ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8, ax9, ax10, ax11) = plt.subplots(nrows=3, figsize=(15, 10),
+    fig, (ax0, ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8, ax9, ax10, ax11) = plt.subplots(nrows=12, figsize=(15, 10),
                                                                                        sharex=True)
-    plot_axis(ax0, data['timestamp'], data['x-axis'], 'x-axis')
-    plot_axis(ax1, data['timestamp'], data['y-axis'], 'y-axis')
-    plot_axis(ax2, data['timestamp'], data['z-axis'], 'z-axis')
-
     plot_axis(ax0, data['timestamp'], data['x-axis_accel_phone'], 'xap')
     plot_axis(ax1, data['timestamp'], data['y-axis_accel_phone'], 'yap')
     plot_axis(ax2, data['timestamp'], data['z-axis_accel_phone'], 'zap')
@@ -91,7 +87,6 @@ def plot_activity(activity, data):
 def split_training_test(data, labels):
     # activity_ids = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'O', 'P', 'Q', 'R', 'S']
     encoded_activity_ids = np.arange(18)
-    print(data.shape)
     train_data = np.empty((0, data.shape[1], data.shape[2]))
     train_labels = np.empty((0))
     test_data = np.empty((0, data.shape[1], data.shape[2]))
@@ -155,10 +150,10 @@ def create_segments_and_labels(data, time_steps, step, label_name):
 pd.set_option('display.max_columns', None)
 pd.set_option('display.width', None)
 pd.set_option('display.max_colwidth', None)
-dataset = read_data('wisdm-merged/1627_merged_data.txt')
-# dataset['x-axis'] = feature_normalise(dataset['x-axis'])
-# dataset['y-axis'] = feature_normalise(dataset['y-axis'])
-# dataset['z-axis'] = feature_normalise(dataset['z-axis'])
+# dataset = read_data('wisdm-merged/1627_merged_data.txt')
+dataset = read_data('wisdm-merged/complete_merge.txt')
+
+# plot_activity("thing", dataset)
 
 dataset['x-axis_accel_phone'] = feature_normalise(dataset['x-axis_accel_phone'])
 dataset['y-axis_accel_phone'] = feature_normalise(dataset['y-axis_accel_phone'])
@@ -172,6 +167,7 @@ dataset['z-axis_accel_watch'] = feature_normalise(dataset['z-axis_accel_watch'])
 dataset['x-axis_gyro_watch'] = feature_normalise(dataset['x-axis_gyro_watch'])
 dataset['y-axis_gyro_watch'] = feature_normalise(dataset['y-axis_gyro_watch'])
 dataset['z-axis_gyro_watch'] = feature_normalise(dataset['z-axis_gyro_watch'])
+
 
 # encode the labels into numerical representations so the neural network can work with them
 ENCODED_LABEL = 'ActivityEncoded'
@@ -194,7 +190,7 @@ segments, labels = create_segments_and_labels(dataset, TIME_PERIODS, STEP_DISTAN
 # test_y = labels[~split]
 train_x, train_y, test_x, test_y = split_training_test(segments, labels)
 
-# code to see what the
+# code to see the proportion of training vs test data for each activity
 # a=np.arange(18)
 # for i in a:
 #     tr=len(np.where(train_y == i)[0])
@@ -209,15 +205,14 @@ train_x, train_y, test_x, test_y = split_training_test(segments, labels)
 # no of time periods within in one record (we've set it to 80 because each data point has an interval of 4 seconds)
 # and there are 3 sensors in this dataset
 num_time_periods, num_sensors = train_x.shape[1], train_x.shape[2]
-print("sensors:", num_sensors)
 # the number of different activities we have - will be used to define the number of output nodes in our network
 num_classes = le.classes_.size
 
 # flatten the data so the network so we can input it into the network
 # TODO: pretty sure you can just have a 'Flatten' input layer in the network instead of doing it manually here
-input_shape = (num_time_periods * num_sensors)
-train_x = train_x.reshape(train_x.shape[0], input_shape)
-test_x = test_x.reshape(test_x.shape[0], input_shape)
+# input_shape = (num_time_periods * num_sensors)
+# train_x = train_x.reshape(train_x.shape[0], input_shape)
+# test_x = test_x.reshape(test_x.shape[0], input_shape)
 
 # convert all data to float32 so TF can read it
 train_x = train_x.astype('float32')
@@ -230,7 +225,16 @@ test_y = test_y.astype('float32')
 train_y_hot = np_utils.to_categorical(train_y, num_classes)
 test_y_hot = np_utils.to_categorical(test_y, num_classes)
 
-model = basic_model.create_model(input_shape, num_classes)
+# model = basic_model.create_model(input_shape, num_classes)
+#
+# trained_model = basic_model.train_model(model, train_x, train_y_hot, verbose=0)
+# print(basic_model.evaluate_model(trained_model, test_x, test_y_hot, verbose=0))
 
-trained_model = basic_model.train_model(model, train_x, train_y_hot, verbose=0)
-print(basic_model.evaluate_model(trained_model, test_x, test_y_hot, verbose=0))
+# TODO: might need to put the 3D data into this rather than flattening it before putting it into model
+cnn_model = CNN1.create_model()
+trained_model = CNN1.train_model(cnn_model, train_x, train_y_hot)
+print(CNN1.evaluate_model(trained_model, test_x, test_y_hot))
+# for i in range(10):
+#     trained_model = CNN1.train_model(cnn_model, train_x, train_y_hot, verbose=0)
+#     print(CNN1.evaluate_model(trained_model, test_x, test_y_hot))
+

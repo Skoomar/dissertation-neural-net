@@ -44,8 +44,6 @@ def manual_merge_accel_gyro_data(accel_subset, gyro_subset, device):
 
 
 def fill_subset(merged_data, accel_subset, gyro_subset, device, target_size):
-    print(merged_data.loc[0]['user-id'])
-    print(accel_subset.loc[0]['activity'])
     """If timestamps of accel_row and gyro data are only partially
         matched up then use this to fill in remaining values"""
     gyro_index = 0
@@ -153,6 +151,50 @@ def merge_subject_data(subject_id):
     return complete_data
 
 
+def merge_phone_data(write_to_csv=False):
+    complete_data = pd.DataFrame(columns=['user-id', 'activity', 'timestamp',
+                                          'x-axis_accel_phone', 'y-axis_accel_phone', 'z-axis_accel_phone',
+                                          'x-axis_gyro_phone', 'y-axis_gyro_phone', 'z-axis_gyro_phone'])
+    for i in range(51):
+        str_id = str(i)
+        if i < 10:
+            str_id = '0' + str_id
+        print("Processing subject " + str_id)
+        phone_accel = read_data('wisdm-dataset/raw/phone/accel/data_16' + str_id + '_accel_phone.txt')
+        phone_gyro = read_data('wisdm-dataset/raw/phone/gyro/data_16' + str_id + '_gyro_phone.txt')
+        phone_data = merge_accel_gyro_data(phone_accel, phone_gyro, 'phone')
+        complete_data = complete_data.append(phone_data, ignore_index=True)
+        if write_to_csv:
+            print("Writing to CSV...")
+            phone_data.to_csv('wisdm-merged/subject_phone_merge/16' + str_id + 'phone_merge.txt')
+    complete_data.dropna(axis=0, how='any').reset_index(drop=True)
+    if write_to_csv:
+        print("Writing to CSV...")
+        complete_data.to_csv('wisdm_merged/phone_merge.txt')
+
+
+def merge_watch_data(write_to_csv=False):
+    complete_data = pd.DataFrame(columns=['user-id', 'activity', 'timestamp',
+                                          'x-axis_accel_watch', 'y-axis_accel_watch', 'z-axis_accel_watch',
+                                          'x-axis_gyro_watch', 'y-axis_gyro_watch', 'z-axis_gyro_watch'])
+    for i in range(51):
+        str_id = str(i)
+        if i < 10:
+            str_id = '0' + str_id
+        print("Processing subject " + str_id)
+        watch_accel = read_data('wisdm-dataset/raw/watch/accel/data_16' + str_id + '_accel_watch.txt')
+        watch_gyro = read_data('wisdm-dataset/raw/watch/gyro/data_16' + str_id + '_gyro_watch.txt')
+        watch_data = merge_accel_gyro_data(watch_accel, watch_gyro, 'watch')
+        complete_data = complete_data.append(watch_data, ignore_index=True)
+        if write_to_csv:
+            print("Writing to CSV...")
+            watch_data.to_csv('wisdm-merged/subject_watch_merge/16' + str_id + 'watch_merge.txt')
+    complete_data.dropna(axis=0, how='any').reset_index(drop=True)
+    if write_to_csv:
+        print("Writing to CSV...")
+        complete_data.to_csv('wisdm_merged/watch_merge.txt')
+
+
 def merge_all_wisdm_by_subject(write_to_csv=False):
     """Create a file for each subject containing a merging of the data from the
         accels and gyros of both their phone and watch"""
@@ -160,8 +202,10 @@ def merge_all_wisdm_by_subject(write_to_csv=False):
         str_id = str(i)
         if i < 10:
             str_id = '0' + str_id
+        print("Processing subject " + str_id)
         subject_data = merge_subject_data(str_id)
         if write_to_csv:
+            print("Writing to CSV...")
             subject_data.to_csv('wisdm-merged/16' + str_id + '_merged_data.txt')
 
 
@@ -176,14 +220,21 @@ def merge_all_wisdm_combined(write_to_csv=False):
         str_id = str(i)
         if i < 10:
             str_id = '0' + str_id
+        print("Processing subject " + str_id)
         subject_data = merge_subject_data(str_id)
         complete_merge = complete_merge.append(subject_data, ignore_index=True)
     complete_merge.dropna(axis=0, how='any').reset_index(drop=True)
-    complete_merge.to_csv('wisdm-merged/complete_data.txt')
+    if write_to_csv:
+        print("Writing to CSV...")
+        complete_merge.to_csv('wisdm-merged/complete_merge.txt')
+    return complete_merge
 
 
 # pd.set_option('display.max_rows', None)
 pd.set_option('display.max_columns', None)
 pd.set_option('display.width', None)
 pd.set_option('display.max_colwidth', None)
-merge_all_wisdm_by_subject()
+merge_phone_data(True)
+merge_watch_data(True)
+# merge_all_wisdm_by_subject()
+# merge_all_wisdm_combined()
