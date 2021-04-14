@@ -1,0 +1,648 @@
+Subject 00
+Run 0
+16/16 - 0s - loss: 0.0633 - accuracy: 0.9839
+Subject ID 00: 0.9839357137680054
+Run 1
+16/16 - 0s - loss: 0.0536 - accuracy: 0.9880
+Subject ID 00: 0.9879518151283264
+Run 2
+16/16 - 0s - loss: 0.0740 - accuracy: 0.9819
+Subject ID 00: 0.9819276928901672
+Run 3
+16/16 - 0s - loss: 0.0604 - accuracy: 0.9839
+Subject ID 00: 0.9839357137680054
+Run 4
+16/16 - 0s - loss: 0.0525 - accuracy: 0.9859
+Subject ID 00: 0.9859437942504883
+Subject 01
+Run 0
+15/15 - 0s - loss: 0.0632 - accuracy: 0.9789
+Subject ID 01: 0.9789473414421082
+Run 1
+15/15 - 0s - loss: 0.0540 - accuracy: 0.9874
+Subject ID 01: 0.9873684048652649
+Run 2
+15/15 - 0s - loss: 0.0609 - accuracy: 0.9832
+Subject ID 01: 0.9831578731536865
+Run 3
+15/15 - 0s - loss: 0.0563 - accuracy: 0.9832
+Subject ID 01: 0.9831578731536865
+Run 4
+15/15 - 0s - loss: 0.0614 - accuracy: 0.9789
+Subject ID 01: 0.9789473414421082
+Subject 02
+Run 0
+15/15 - 0s - loss: 0.2201 - accuracy: 0.9411
+Subject ID 02: 0.9410526156425476
+Run 1
+15/15 - 0s - loss: 0.2249 - accuracy: 0.9368
+Subject ID 02: 0.9368420839309692
+Run 2
+15/15 - 0s - loss: 0.2444 - accuracy: 0.9411
+Subject ID 02: 0.9410526156425476
+Run 3
+15/15 - 0s - loss: 0.2413 - accuracy: 0.9495
+Subject ID 02: 0.9494736790657043
+Run 4
+15/15 - 0s - loss: 0.2095 - accuracy: 0.9579
+Subject ID 02: 0.9578947424888611
+Subject 03
+Run 0
+17/17 - 0s - loss: 0.1199 - accuracy: 0.9710
+Subject ID 03: 0.9710424542427063
+Run 1
+17/17 - 0s - loss: 0.1243 - accuracy: 0.9749
+Subject ID 03: 0.9749034643173218
+Run 2
+17/17 - 0s - loss: 0.1318 - accuracy: 0.9749
+Subject ID 03: 0.9749034643173218
+Run 3
+17/17 - 0s - loss: 0.1293 - accuracy: 0.9749
+Subject ID 03: 0.9749034643173218
+Run 4
+17/17 - 0s - loss: 0.1377 - accuracy: 0.9788
+Subject ID 03: 0.9787644743919373
+Subject 04
+Run 0
+15/15 - 0s - loss: 0.1985 - accuracy: 0.9485
+Subject ID 04: 0.9484978318214417
+Run 1
+15/15 - 0s - loss: 0.1870 - accuracy: 0.9571
+Subject ID 04: 0.9570815563201904
+Run 2
+15/15 - 0s - loss: 0.1757 - accuracy: 0.9700
+Subject ID 04: 0.9699570536613464
+Run 3
+15/15 - 0s - loss: 0.1726 - accuracy: 0.9657
+Subject ID 04: 0.9656652212142944
+Run 4
+15/15 - 0s - loss: 0.1965 - accuracy: 0.9700
+Subject ID 04: 0.9699570536613464
+Subject 05
+Run 0
+15/15 - 0s - loss: 0.1309 - accuracy: 0.9599
+Subject ID 05: 0.9599156379699707
+Run 1
+15/15 - 0s - loss: 0.1225 - accuracy: 0.9747
+Subject ID 05: 0.9746835231781006
+Run 2
+15/15 - 0s - loss: 0.1087 - accuracy: 0.9768
+Subject ID 05: 0.9767932295799255
+Run 3
+15/15 - 0s - loss: 0.0974 - accuracy: 0.9747
+Subject ID 05: 0.9746835231781006
+Run 4
+15/15 - 0s - loss: 0.0996 - accuracy: 0.9768
+Subject ID 05: 0.9767932295799255
+Subject 06
+Run 0
+16/16 - 0s - loss: 0.1528 - accuracy: 0.9592
+Subject ID 06: 0.9591836929321289
+Run 1
+16/16 - 0s - loss: 0.1386 - accuracy: 0.9673
+Subject ID 06: 0.9673469662666321
+Run 2
+16/16 - 0s - loss: 0.1296 - accuracy: 0.9694
+Subject ID 06: 0.9693877696990967
+Run 3
+16/16 - 0s - loss: 0.1352 - accuracy: 0.9714
+Subject ID 06: 0.9714285731315613
+Run 4
+16/16 - 0s - loss: 0.1338 - accuracy: 0.9694
+Subject ID 06: 0.9693877696990967
+Subject 07
+07 missing features - only has: 17
+Subject 08
+Run 0
+16/16 - 0s - loss: 0.1427 - accuracy: 0.9707
+Subject ID 08: 0.970703125
+Run 1
+16/16 - 0s - loss: 0.1291 - accuracy: 0.9805
+Subject ID 08: 0.98046875
+Run 2
+16/16 - 0s - loss: 0.1334 - accuracy: 0.9805
+Subject ID 08: 0.98046875
+Run 3
+16/16 - 0s - loss: 0.1629 - accuracy: 0.9766
+Subject ID 08: 0.9765625
+Run 4
+16/16 - 0s - loss: 0.1462 - accuracy: 0.9766
+Subject ID 08: 0.9765625
+Subject 09
+09 missing features - only has: 17
+Subject 10
+Run 0
+16/16 - 0s - loss: 0.0529 - accuracy: 0.9854
+Subject ID 10: 0.9854469895362854
+Run 1
+16/16 - 0s - loss: 0.0430 - accuracy: 0.9875
+Subject ID 10: 0.987525999546051
+Run 2
+16/16 - 0s - loss: 0.0477 - accuracy: 0.9854
+Subject ID 10: 0.9854469895362854
+Run 3
+16/16 - 0s - loss: 0.0449 - accuracy: 0.9854
+Subject ID 10: 0.9854469895362854
+Run 4
+16/16 - 0s - loss: 0.0419 - accuracy: 0.9854
+Subject ID 10: 0.9854469895362854
+Subject 11
+Run 0
+16/16 - 0s - loss: 0.1231 - accuracy: 0.9607
+Subject ID 11: 0.96074378490448
+Run 1
+16/16 - 0s - loss: 0.1247 - accuracy: 0.9628
+Subject ID 11: 0.9628099203109741
+Run 2
+16/16 - 0s - loss: 0.1156 - accuracy: 0.9669
+Subject ID 11: 0.9669421315193176
+Run 3
+16/16 - 0s - loss: 0.1346 - accuracy: 0.9649
+Subject ID 11: 0.9648760557174683
+Run 4
+16/16 - 0s - loss: 0.1348 - accuracy: 0.9690
+Subject ID 11: 0.9690082669258118
+Subject 12
+Run 0
+16/16 - 0s - loss: 0.0951 - accuracy: 0.9715
+Subject ID 12: 0.9714867472648621
+Run 1
+16/16 - 0s - loss: 0.0755 - accuracy: 0.9817
+Subject ID 12: 0.981670081615448
+Run 2
+16/16 - 0s - loss: 0.0760 - accuracy: 0.9817
+Subject ID 12: 0.981670081615448
+Run 3
+16/16 - 0s - loss: 0.0827 - accuracy: 0.9817
+Subject ID 12: 0.981670081615448
+Run 4
+16/16 - 0s - loss: 0.0990 - accuracy: 0.9796
+Subject ID 12: 0.9796333909034729
+Subject 13
+Run 0
+15/15 - 0s - loss: 0.2018 - accuracy: 0.9679
+Subject ID 13: 0.9678800702095032
+Run 1
+15/15 - 0s - loss: 0.1945 - accuracy: 0.9743
+Subject ID 13: 0.9743040800094604
+Run 2
+15/15 - 0s - loss: 0.2136 - accuracy: 0.9722
+Subject ID 13: 0.9721627235412598
+Run 3
+15/15 - 0s - loss: 0.2249 - accuracy: 0.9700
+Subject ID 13: 0.9700214266777039
+Run 4
+15/15 - 0s - loss: 0.2251 - accuracy: 0.9764
+Subject ID 13: 0.9764453768730164
+Subject 14
+Run 0
+16/16 - 0s - loss: 0.0727 - accuracy: 0.9823
+Subject ID 14: 0.9823182821273804
+Run 1
+16/16 - 0s - loss: 0.0746 - accuracy: 0.9882
+Subject ID 14: 0.9882121682167053
+Run 2
+16/16 - 0s - loss: 0.0674 - accuracy: 0.9862
+Subject ID 14: 0.9862475395202637
+Run 3
+16/16 - 0s - loss: 0.0659 - accuracy: 0.9862
+Subject ID 14: 0.9862475395202637
+Run 4
+16/16 - 0s - loss: 0.0638 - accuracy: 0.9882
+Subject ID 14: 0.9882121682167053
+Subject 15
+Run 0
+16/16 - 0s - loss: 0.1102 - accuracy: 0.9550
+Subject ID 15: 0.9549902081489563
+Run 1
+16/16 - 0s - loss: 0.0980 - accuracy: 0.9609
+Subject ID 15: 0.9608610272407532
+Run 2
+16/16 - 0s - loss: 0.0788 - accuracy: 0.9765
+Subject ID 15: 0.976516604423523
+Run 3
+16/16 - 0s - loss: 0.0612 - accuracy: 0.9804
+Subject ID 15: 0.980430543422699
+Run 4
+16/16 - 0s - loss: 0.0615 - accuracy: 0.9804
+Subject ID 15: 0.980430543422699
+Subject 16
+16 missing features - only has: 16
+Subject 17
+Run 0
+15/15 - 0s - loss: 0.1040 - accuracy: 0.9770
+Subject ID 17: 0.9769874215126038
+Run 1
+15/15 - 0s - loss: 0.1089 - accuracy: 0.9791
+Subject ID 17: 0.9790794849395752
+Run 2
+15/15 - 0s - loss: 0.0893 - accuracy: 0.9854
+Subject ID 17: 0.9853556752204895
+Run 3
+15/15 - 0s - loss: 0.0963 - accuracy: 0.9812
+Subject ID 17: 0.9811715483665466
+Run 4
+15/15 - 0s - loss: 0.0922 - accuracy: 0.9854
+Subject ID 17: 0.9853556752204895
+Subject 18
+18 missing features - only has: 17
+Subject 19
+Run 0
+15/15 - 0s - loss: 0.1883 - accuracy: 0.9486
+Subject ID 19: 0.9486081600189209
+Run 1
+15/15 - 0s - loss: 0.1564 - accuracy: 0.9507
+Subject ID 19: 0.9507494568824768
+Run 2
+15/15 - 0s - loss: 0.1574 - accuracy: 0.9529
+Subject ID 19: 0.9528908133506775
+Run 3
+15/15 - 0s - loss: 0.1887 - accuracy: 0.9443
+Subject ID 19: 0.9443255066871643
+Run 4
+15/15 - 0s - loss: 0.1774 - accuracy: 0.9465
+Subject ID 19: 0.9464668035507202
+Subject 20
+Run 0
+16/16 - 0s - loss: 0.3201 - accuracy: 0.9267
+Subject ID 20: 0.9266802668571472
+Run 1
+16/16 - 0s - loss: 0.3373 - accuracy: 0.9348
+Subject ID 20: 0.9348269104957581
+Run 2
+16/16 - 0s - loss: 0.3500 - accuracy: 0.9328
+Subject ID 20: 0.932790219783783
+Run 3
+16/16 - 0s - loss: 0.4002 - accuracy: 0.9328
+Subject ID 20: 0.932790219783783
+Run 4
+16/16 - 0s - loss: 0.4426 - accuracy: 0.9348
+Subject ID 20: 0.9348269104957581
+Subject 21
+Run 0
+16/16 - 0s - loss: 0.2537 - accuracy: 0.9461
+Subject ID 21: 0.946107804775238
+Run 1
+16/16 - 0s - loss: 0.2764 - accuracy: 0.9501
+Subject ID 21: 0.9500998258590698
+Run 2
+16/16 - 0s - loss: 0.2891 - accuracy: 0.9481
+Subject ID 21: 0.9481037855148315
+Run 3
+16/16 - 0s - loss: 0.2730 - accuracy: 0.9501
+Subject ID 21: 0.9500998258590698
+Run 4
+16/16 - 0s - loss: 0.2705 - accuracy: 0.9461
+Subject ID 21: 0.946107804775238
+Subject 22
+Run 0
+15/15 - 0s - loss: 0.1570 - accuracy: 0.9688
+Subject ID 22: 0.96875
+Run 1
+15/15 - 0s - loss: 0.1595 - accuracy: 0.9708
+Subject ID 22: 0.9708333611488342
+Run 2
+15/15 - 0s - loss: 0.1602 - accuracy: 0.9688
+Subject ID 22: 0.96875
+Run 3
+15/15 - 0s - loss: 0.1410 - accuracy: 0.9771
+Subject ID 22: 0.9770833253860474
+Run 4
+15/15 - 0s - loss: 0.1568 - accuracy: 0.9750
+Subject ID 22: 0.9750000238418579
+Subject 23
+Run 0
+15/15 - 0s - loss: 0.2192 - accuracy: 0.9492
+Subject ID 23: 0.9491525292396545
+Run 1
+15/15 - 0s - loss: 0.1784 - accuracy: 0.9640
+Subject ID 23: 0.9639830589294434
+Run 2
+15/15 - 0s - loss: 0.1759 - accuracy: 0.9682
+Subject ID 23: 0.9682203531265259
+Run 3
+15/15 - 0s - loss: 0.1923 - accuracy: 0.9576
+Subject ID 23: 0.9576271176338196
+Run 4
+15/15 - 0s - loss: 0.1893 - accuracy: 0.9640
+Subject ID 23: 0.9639830589294434
+Subject 24
+Run 0
+15/15 - 0s - loss: 0.4726 - accuracy: 0.8326
+Subject ID 24: 0.8326359987258911
+Run 1
+15/15 - 0s - loss: 0.3728 - accuracy: 0.8787
+Subject ID 24: 0.8786610960960388
+Run 2
+15/15 - 0s - loss: 0.3959 - accuracy: 0.8870
+Subject ID 24: 0.8870292901992798
+Run 3
+15/15 - 0s - loss: 0.3609 - accuracy: 0.8954
+Subject ID 24: 0.8953974843025208
+Run 4
+15/15 - 0s - loss: 0.3689 - accuracy: 0.8808
+Subject ID 24: 0.8807531595230103
+Subject 25
+Run 0
+15/15 - 0s - loss: 0.2813 - accuracy: 0.9268
+Subject ID 25: 0.926778256893158
+Run 1
+15/15 - 0s - loss: 0.2785 - accuracy: 0.9351
+Subject ID 25: 0.9351464509963989
+Run 2
+15/15 - 0s - loss: 0.2764 - accuracy: 0.9351
+Subject ID 25: 0.9351464509963989
+Run 3
+15/15 - 0s - loss: 0.2543 - accuracy: 0.9372
+Subject ID 25: 0.9372385144233704
+Run 4
+15/15 - 0s - loss: 0.2524 - accuracy: 0.9519
+Subject ID 25: 0.9518828392028809
+Subject 26
+Run 0
+16/16 - 0s - loss: 0.2167 - accuracy: 0.9434
+Subject ID 26: 0.943359375
+Run 1
+16/16 - 0s - loss: 0.1983 - accuracy: 0.9512
+Subject ID 26: 0.951171875
+Run 2
+16/16 - 0s - loss: 0.1503 - accuracy: 0.9688
+Subject ID 26: 0.96875
+Run 3
+16/16 - 0s - loss: 0.1414 - accuracy: 0.9688
+Subject ID 26: 0.96875
+Run 4
+16/16 - 0s - loss: 0.1627 - accuracy: 0.9648
+Subject ID 26: 0.96484375
+Subject 27
+Run 0
+16/16 - 0s - loss: 0.3670 - accuracy: 0.9130
+Subject ID 27: 0.9130434989929199
+Run 1
+16/16 - 0s - loss: 0.3643 - accuracy: 0.9441
+Subject ID 27: 0.9440993666648865
+Run 2
+16/16 - 0s - loss: 0.3834 - accuracy: 0.9420
+Subject ID 27: 0.9420289993286133
+Run 3
+16/16 - 0s - loss: 0.3653 - accuracy: 0.9441
+Subject ID 27: 0.9440993666648865
+Run 4
+16/16 - 0s - loss: 0.3776 - accuracy: 0.9420
+Subject ID 27: 0.9420289993286133
+Subject 28
+Run 0
+16/16 - 0s - loss: 0.3994 - accuracy: 0.8804
+Subject ID 28: 0.8804123997688293
+Run 1
+16/16 - 0s - loss: 0.3177 - accuracy: 0.9093
+Subject ID 28: 0.9092783331871033
+Run 2
+16/16 - 0s - loss: 0.3278 - accuracy: 0.9134
+Subject ID 28: 0.9134020805358887
+Run 3
+16/16 - 0s - loss: 0.3337 - accuracy: 0.9258
+Subject ID 28: 0.9257732033729553
+Run 4
+16/16 - 0s - loss: 0.3404 - accuracy: 0.9175
+Subject ID 28: 0.9175257682800293
+Subject 29
+Run 0
+59/59 - 0s - loss: 0.1528 - accuracy: 0.9559
+Subject ID 29: 0.9558745622634888
+Run 1
+59/59 - 0s - loss: 0.1259 - accuracy: 0.9660
+Subject ID 29: 0.9659755229949951
+Run 2
+59/59 - 0s - loss: 0.1080 - accuracy: 0.9718
+Subject ID 29: 0.971823513507843
+Run 3
+59/59 - 0s - loss: 0.1134 - accuracy: 0.9740
+Subject ID 29: 0.9739500284194946
+Run 4
+59/59 - 0s - loss: 0.1230 - accuracy: 0.9724
+Subject ID 29: 0.9723551273345947
+Subject 30
+Run 0
+15/15 - 0s - loss: 0.3287 - accuracy: 0.9057
+Subject ID 30: 0.9056603908538818
+Run 1
+15/15 - 0s - loss: 0.3078 - accuracy: 0.9224
+Subject ID 30: 0.9224318861961365
+Run 2
+15/15 - 0s - loss: 0.2786 - accuracy: 0.9266
+Subject ID 30: 0.9266247153282166
+Run 3
+15/15 - 0s - loss: 0.2727 - accuracy: 0.9371
+Subject ID 30: 0.9371069073677063
+Run 4
+15/15 - 0s - loss: 0.2794 - accuracy: 0.9350
+Subject ID 30: 0.9350104928016663
+Subject 31
+Run 0
+16/16 - 0s - loss: 0.2661 - accuracy: 0.9091
+Subject ID 31: 0.9090909361839294
+Run 1
+16/16 - 0s - loss: 0.2131 - accuracy: 0.9313
+Subject ID 31: 0.931313157081604
+Run 2
+16/16 - 0s - loss: 0.1403 - accuracy: 0.9475
+Subject ID 31: 0.9474747180938721
+Run 3
+16/16 - 0s - loss: 0.1150 - accuracy: 0.9596
+Subject ID 31: 0.9595959782600403
+Run 4
+16/16 - 0s - loss: 0.1155 - accuracy: 0.9616
+Subject ID 31: 0.9616161584854126
+Subject 32
+Run 0
+16/16 - 0s - loss: 0.3503 - accuracy: 0.9340
+Subject ID 32: 0.9340206384658813
+Run 1
+16/16 - 0s - loss: 0.3483 - accuracy: 0.9402
+Subject ID 32: 0.9402061700820923
+Run 2
+16/16 - 0s - loss: 0.3785 - accuracy: 0.9443
+Subject ID 32: 0.9443299174308777
+Run 3
+16/16 - 0s - loss: 0.3829 - accuracy: 0.9464
+Subject ID 32: 0.946391761302948
+Run 4
+16/16 - 0s - loss: 0.4109 - accuracy: 0.9381
+Subject ID 32: 0.938144326210022
+Subject 33
+Run 0
+16/16 - 0s - loss: 0.4953 - accuracy: 0.8753
+Subject ID 33: 0.8752515316009521
+Run 1
+16/16 - 0s - loss: 0.4579 - accuracy: 0.8893
+Subject ID 33: 0.8893359899520874
+Run 2
+16/16 - 0s - loss: 0.4274 - accuracy: 0.8994
+Subject ID 33: 0.8993963599205017
+Run 3
+16/16 - 0s - loss: 0.4423 - accuracy: 0.9014
+Subject ID 33: 0.9014084339141846
+Run 4
+16/16 - 0s - loss: 0.4786 - accuracy: 0.8934
+Subject ID 33: 0.8933601379394531
+Subject 34
+Run 0
+16/16 - 0s - loss: 0.3821 - accuracy: 0.8735
+Subject ID 34: 0.8735178112983704
+Run 1
+16/16 - 0s - loss: 0.2967 - accuracy: 0.9051
+Subject ID 34: 0.9051383137702942
+Run 2
+16/16 - 0s - loss: 0.2874 - accuracy: 0.9032
+Subject ID 34: 0.9031620621681213
+Run 3
+16/16 - 0s - loss: 0.2771 - accuracy: 0.9111
+Subject ID 34: 0.9110671877861023
+Run 4
+16/16 - 0s - loss: 0.2965 - accuracy: 0.9190
+Subject ID 34: 0.9189723134040833
+Subject 35
+Run 0
+16/16 - 0s - loss: 0.2727 - accuracy: 0.9253
+Subject ID 35: 0.9253112077713013
+Run 1
+16/16 - 0s - loss: 0.2040 - accuracy: 0.9419
+Subject ID 35: 0.9419087171554565
+Run 2
+16/16 - 0s - loss: 0.2228 - accuracy: 0.9398
+Subject ID 35: 0.9398339986801147
+Run 3
+16/16 - 0s - loss: 0.2043 - accuracy: 0.9440
+Subject ID 35: 0.9439833760261536
+Run 4
+16/16 - 0s - loss: 0.2019 - accuracy: 0.9481
+Subject ID 35: 0.9481327533721924
+Subject 36
+Run 0
+15/15 - 0s - loss: 0.1579 - accuracy: 0.9665
+Subject ID 36: 0.9665272235870361
+Run 1
+15/15 - 0s - loss: 0.1714 - accuracy: 0.9644
+Subject ID 36: 0.9644351601600647
+Run 2
+15/15 - 0s - loss: 0.1820 - accuracy: 0.9665
+Subject ID 36: 0.9665272235870361
+Run 3
+15/15 - 0s - loss: 0.1822 - accuracy: 0.9686
+Subject ID 36: 0.9686192274093628
+Run 4
+15/15 - 0s - loss: 0.1847 - accuracy: 0.9686
+Subject ID 36: 0.9686192274093628
+Subject 37
+37 missing features - only has: 16
+Subject 38
+38 missing features - only has: 16
+Subject 39
+39 missing features - only has: 17
+Subject 40
+40 missing features - only has: 16
+Subject 41
+41 missing features - only has: 17
+Subject 42
+42 missing features - only has: 16
+Subject 43
+43 missing features - only has: 17
+Subject 44
+44 missing features - only has: 17
+Subject 45
+Run 0
+17/17 - 0s - loss: 0.4426 - accuracy: 0.8616
+Subject ID 45: 0.8615984320640564
+Run 1
+17/17 - 0s - loss: 0.4529 - accuracy: 0.8577
+Subject ID 45: 0.8576998114585876
+Run 2
+17/17 - 0s - loss: 0.4659 - accuracy: 0.8674
+Subject ID 45: 0.8674464225769043
+Run 3
+17/17 - 0s - loss: 0.4848 - accuracy: 0.8616
+Subject ID 45: 0.8615984320640564
+Run 4
+17/17 - 0s - loss: 0.4614 - accuracy: 0.8733
+Subject ID 45: 0.8732943534851074
+Subject 46
+Run 0
+16/16 - 0s - loss: 0.5699 - accuracy: 0.8589
+Subject ID 46: 0.8588709831237793
+Run 1
+16/16 - 0s - loss: 0.4861 - accuracy: 0.8831
+Subject ID 46: 0.8830645084381104
+Run 2
+16/16 - 0s - loss: 0.4966 - accuracy: 0.9012
+Subject ID 46: 0.9012096524238586
+Run 3
+16/16 - 0s - loss: 0.5123 - accuracy: 0.8972
+Subject ID 46: 0.8971773982048035
+Run 4
+16/16 - 0s - loss: 0.5210 - accuracy: 0.8972
+Subject ID 46: 0.8971773982048035
+Subject 47
+Run 0
+16/16 - 0s - loss: 0.5083 - accuracy: 0.8519
+Subject ID 47: 0.8519269824028015
+Run 1
+16/16 - 0s - loss: 0.4279 - accuracy: 0.8641
+Subject ID 47: 0.8640973567962646
+Run 2
+16/16 - 0s - loss: 0.4387 - accuracy: 0.8682
+Subject ID 47: 0.8681541681289673
+Run 3
+16/16 - 0s - loss: 0.4655 - accuracy: 0.8682
+Subject ID 47: 0.8681541681289673
+Run 4
+16/16 - 0s - loss: 0.4511 - accuracy: 0.8824
+Subject ID 47: 0.8823529481887817
+Subject 48
+Run 0
+16/16 - 0s - loss: 0.2818 - accuracy: 0.9277
+Subject ID 48: 0.9276859760284424
+Run 1
+16/16 - 0s - loss: 0.3008 - accuracy: 0.9298
+Subject ID 48: 0.9297520518302917
+Run 2
+16/16 - 0s - loss: 0.2576 - accuracy: 0.9360
+Subject ID 48: 0.9359503984451294
+Run 3
+16/16 - 0s - loss: 0.2625 - accuracy: 0.9380
+Subject ID 48: 0.9380165338516235
+Run 4
+16/16 - 0s - loss: 0.2723 - accuracy: 0.9442
+Subject ID 48: 0.9442148804664612
+Subject 49
+Run 0
+16/16 - 0s - loss: 0.3209 - accuracy: 0.9124
+Subject ID 49: 0.912350594997406
+Run 1
+16/16 - 0s - loss: 0.3175 - accuracy: 0.9163
+Subject ID 49: 0.9163346886634827
+Run 2
+16/16 - 0s - loss: 0.3372 - accuracy: 0.9243
+Subject ID 49: 0.9243028163909912
+Run 3
+16/16 - 0s - loss: 0.3514 - accuracy: 0.9183
+Subject ID 49: 0.9183266758918762
+Run 4
+16/16 - 0s - loss: 0.3522 - accuracy: 0.9243
+Subject ID 49: 0.9243028163909912
+Subject 50
+Run 0
+16/16 - 0s - loss: 0.4895 - accuracy: 0.8600
+Subject ID 50: 0.860040545463562
+Run 1
+16/16 - 0s - loss: 0.4651 - accuracy: 0.8824
+Subject ID 50: 0.8823529481887817
+Run 2
+16/16 - 0s - loss: 0.5217 - accuracy: 0.8783
+Subject ID 50: 0.8782961368560791
+Run 3
+16/16 - 0s - loss: 0.4779 - accuracy: 0.8905
+Subject ID 50: 0.8904665112495422
+Run 4
+16/16 - 0s - loss: 0.5493 - accuracy: 0.8884
+Subject ID 50: 0.8884381055831909

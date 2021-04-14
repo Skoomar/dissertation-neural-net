@@ -150,8 +150,8 @@ def create_segments_and_labels(data, time_steps, step, label_name):
 pd.set_option('display.max_columns', None)
 pd.set_option('display.width', None)
 pd.set_option('display.max_colwidth', None)
-# dataset = read_data('wisdm-merged/1627_merged_data.txt')
-dataset = read_data('wisdm-merged/complete_merge.txt')
+dataset = read_data('wisdm-merged/1627_merged_data.txt')
+# dataset = read_data('wisdm-merged/complete_merge.txt')
 
 # plot_activity("thing", dataset)
 

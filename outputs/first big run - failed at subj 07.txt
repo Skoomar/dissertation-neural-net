@@ -1,0 +1,14 @@
+16/16 - 0s - loss: 0.0792 - accuracy: 0.9759
+Subject ID 00: 0.9759036302566528
+15/15 - 0s - loss: 0.0654 - accuracy: 0.9913
+Subject ID 01: 0.9912853837013245
+16/16 - 0s - loss: 0.1423 - accuracy: 0.9606
+Subject ID 02: 0.9605808854103088
+16/16 - 0s - loss: 0.1480 - accuracy: 0.9753
+Subject ID 03: 0.9753086566925049
+15/15 - 0s - loss: 0.1535 - accuracy: 0.9555
+Subject ID 04: 0.9555084705352783
+16/16 - 0s - loss: 0.1744 - accuracy: 0.9642
+Subject ID 05: 0.9642146825790405
+15/15 - 0s - loss: 0.0955 - accuracy: 0.9764
+Subject ID 06: 0.9764453768730164

@@ -166,11 +166,11 @@ def merge_phone_data(write_to_csv=False):
         complete_data = complete_data.append(phone_data, ignore_index=True)
         if write_to_csv:
             print("Writing to CSV...")
-            phone_data.to_csv('wisdm-merged/subject_phone_merge/16' + str_id + 'phone_merge.txt')
+            phone_data.to_csv('wisdm-merged/subject_phone_merge/16' + str_id + '_phone_merge.txt')
     complete_data.dropna(axis=0, how='any').reset_index(drop=True)
     if write_to_csv:
         print("Writing to CSV...")
-        complete_data.to_csv('wisdm_merged/phone_merge.txt')
+        complete_data.to_csv('wisdm-merged/phone_merge.txt')
 
 
 def merge_watch_data(write_to_csv=False):
@@ -188,11 +188,11 @@ def merge_watch_data(write_to_csv=False):
         complete_data = complete_data.append(watch_data, ignore_index=True)
         if write_to_csv:
             print("Writing to CSV...")
-            watch_data.to_csv('wisdm-merged/subject_watch_merge/16' + str_id + 'watch_merge.txt')
+            watch_data.to_csv('wisdm-merged/subject_watch_merge/16' + str_id + '_watch_merge.txt')
     complete_data.dropna(axis=0, how='any').reset_index(drop=True)
     if write_to_csv:
         print("Writing to CSV...")
-        complete_data.to_csv('wisdm_merged/watch_merge.txt')
+        complete_data.to_csv('wisdm-merged/watch_merge.txt')
 
 
 def merge_all_wisdm_by_subject(write_to_csv=False):
@@ -234,7 +234,7 @@ def merge_all_wisdm_combined(write_to_csv=False):
 pd.set_option('display.max_columns', None)
 pd.set_option('display.width', None)
 pd.set_option('display.max_colwidth', None)
-merge_phone_data(True)
-merge_watch_data(True)
+# merge_phone_data(True)
+# merge_watch_data(True)
 # merge_all_wisdm_by_subject()
 # merge_all_wisdm_combined()
