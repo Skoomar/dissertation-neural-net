@@ -1,30 +1,25 @@
-import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from keras.utils import np_utils
 from scipy import stats
 from sklearn import preprocessing
-from keras.utils import np_utils
+
 import CNN1
 
 pd.options.display.float_format = '{:.1f}'.format
 plt.style.use('ggplot')
 
 
-def convert_to_float(x):
-    try:
-        return np.float(x)
-    except:
-        return np.nan
-
-
 def read_data(file_path):
     # Only use these if putting the original (non-merged) data
-    column_names = ['user-id', 'activity', 'timestamp',
-                    'x-axis_accel_phone', 'y-axis_accel_phone', 'z-axis_accel_phone',
-                    'x-axis_gyro_phone', 'y-axis_gyro_phone', 'z-axis_gyro_phone',
-                    'x-axis_accel_watch', 'y-axis_accel_watch', 'z-axis_accel_watch',
-                    'x-axis_gyro_watch', 'y-axis_gyro_watch', 'z-axis_gyro_watch']
+    # column_names = ['user-id', 'activity', 'timestamp',
+    #                 'x-axis_accel_phone', 'y-axis_accel_phone', 'z-axis_accel_phone',
+    #                 'x-axis_gyro_phone', 'y-axis_gyro_phone', 'z-axis_gyro_phone',
+    #                 'x-axis_accel_watch', 'y-axis_accel_watch', 'z-axis_accel_watch',
+    #                 'x-axis_gyro_watch', 'y-axis_gyro_watch', 'z-axis_gyro_watch']
 
+    # no need for header & column_names unless you're using the original data
     data = pd.read_csv(file_path
                        # header=None,
                        # names=column_names
@@ -134,12 +129,13 @@ def create_segments_and_labels(data, time_steps, step, label_name):
     return reshaped_segments, labels
 
 
-def prepare_data_for_model(subject_id):
-    dataset = read_data('wisdm-merged/subject_full_merge/16' + subject_id + '_merged_data.txt')
-    # dataset = read_data('wisdm-merged/complete_merge.txt')
+def prepare_subject_data(data_path):
+    """Get all data for the given subject, process it and split it into training and testing sets for the model"""
+    dataset = read_data(data_path)
 
     # plot_activity("thing", dataset)
 
+    # TODO: think putting a BatchNormalisation layer in the model might be better than this
     dataset['x-axis_accel_phone'] = feature_normalise(dataset['x-axis_accel_phone'])
     dataset['y-axis_accel_phone'] = feature_normalise(dataset['y-axis_accel_phone'])
     dataset['z-axis_accel_phone'] = feature_normalise(dataset['z-axis_accel_phone'])
@@ -167,24 +163,7 @@ def prepare_data_for_model(subject_id):
 
     segments, labels = create_segments_and_labels(dataset, TIME_PERIODS, STEP_DISTANCE, ENCODED_LABEL)
 
-    # uncomment this to split the whole dataset without trying to get an equal proportion of records for each activity
-    # split = np.random.rand(len(segments)) < 0.70
-    # train_x = segments[split]
-    # train_y = labels[split]
-    # test_x = segments[~split]
-    # test_y = labels[~split]
     train_x, train_y, test_x, test_y = split_training_test(segments, labels)
-
-    # code to see the proportion of training vs test data for each activity
-    # a=np.arange(18)
-    # for i in a:
-    #     tr=len(np.where(train_y == i)[0])
-    #     te=len(np.where(test_y == i)[0])
-    #     print("train for label", i, ":", tr)
-    #     print("test for label", i, ":", te)
-    #     print("%:", (tr/(tr+te)) * 100)
-    #     print("%:", (te/(tr+te)) * 100)
-    #     print("sum:", tr+te, "\n")
 
     # store the following variables to use for constructing the neural network
     # no of time periods within in one record (we've set it to 80 because each data point has an interval of 4 seconds)
@@ -192,11 +171,6 @@ def prepare_data_for_model(subject_id):
     num_time_periods, num_sensors = train_x.shape[1], train_x.shape[2]
     # the number of different activities we have - will be used to define the number of output nodes in our network
     num_classes = le.classes_.size
-
-    # flatten the data so the network so we can input it into the network
-    # input_shape = (num_time_periods * num_sensors)
-    # train_x = train_x.reshape(train_x.shape[0], input_shape)
-    # test_x = test_x.reshape(test_x.shape[0], input_shape)
 
     # convert all data to float32 so TF can read it
     train_x = train_x.astype('float32')
@@ -210,42 +184,64 @@ def prepare_data_for_model(subject_id):
     test_y_hot = np_utils.to_categorical(test_y, num_classes)
 
     return train_x, train_y_hot, test_x, test_y_hot
-    # cnn_model = CNN1.create_model()
-    # trained_model = CNN1.train_model(cnn_model, train_x, train_y_hot, verbose=verbose_training)
-    # print("Subject ID " + subject_id + ":", CNN1.evaluate_model(trained_model, test_x, test_y_hot))
-    # for i in range(10):
-    #     trained_model = CNN1.train_model(cnn_model, train_x, train_y_hot, verbose=0)
-    #     print(CNN1.evaluate_model(trained_model, test_x, test_y_hot))
 
 
-def main():
-    cnn_model = CNN1.create_model()
+def run_by_subject():
+    # make different models for different number of features
+    # some subjects don't have data for certain classes so need to use different number of features for their model
+    cnn_18_classes = CNN1.create_model()
+    cnn_17_classes = CNN1.create_model(num_classes=17)
+    cnn_16_classes = CNN1.create_model(num_classes=16)
     # TODO: SUBJECT 07 and 09 have no records for activity J, so need to change the model to have 17 features
     #  when training on their data
-
+    # output = ""
     for i in range(51):
         subject_id = str(i)
         if i < 10:
             subject_id = '0' + subject_id
 
         print("Subject " + subject_id)
-        train_x, train_y, test_x, test_y = prepare_data_for_model(subject_id)
-        if train_y.shape[1] != 18:
-            print(subject_id + " missing features - only has:", train_y.shape[1])
-            continue
-        for run_no in range(5):
-            print("Run", run_no)
-            trained_model = CNN1.train_model(cnn_model, train_x, train_y, verbose=0)
-            print("Subject ID " + subject_id + ":", CNN1.evaluate_model(trained_model, test_x, test_y), "\n")
+        # output += "\n\nSubject" + subject_id
+        train_x, train_y, test_x, test_y = prepare_subject_data(
+            'wisdm-merged/subject_full_merge/16' + subject_id + '_merged_data.txt')
 
-    # subject_id = '09'
-    # train_x, train_y, test_x, test_y = prepare_data_for_model(subject_id)
-    # print(train_x.shape, train_y.shape, test_x.shape, test_y.shape)
-    # trained_model = CNN1.train_model(cnn_model, train_x, train_y, verbose=0)
-    # print("Subject ID " + subject_id + ":", CNN1.evaluate_model(trained_model, test_x, test_y))
+        if train_y.shape[1] == 18:
+            model = cnn_18_classes
+        elif train_y.shape[1] == 17:
+            model = cnn_17_classes
+            # output += "\nSubject has 17 classes"
+            print("Subject has 17 classes")
+        elif train_y.shape[1] == 16:
+            model = cnn_16_classes
+            # output += "\nSubject has 16 classes"
+            print("Subject has 16 classes")
+        else:
+            raise ValueError("Subject is missing more features than expected, only has:", train_y.shape[1])
+
+        for run_no in range(1, 6):
+            print("Run", run_no)
+            # output += "\n\nRun: " + str(run_no)
+            trained_model = CNN1.train_model(model, train_x, train_y, verbose=0)
+            accuracy = CNN1.evaluate_model(trained_model, test_x, test_y)
+            print("Subject ID " + subject_id + ":", accuracy, "\n")
+            # output += "\nSubject ID " + subject_id + " accuracy: " + str(accuracy)
+
+    # f = open("outputs/run" + str(execution_id) + ".txt", "w")
+    # f.write(output)
+    # f.close()
+
+
+def run_all_data():
+    train_x, train_y, test_x, test_y = prepare_subject_data('wisdm-merged/complete_merge.txt')
+    model = CNN1.create_model()
+    for run_no in range(1, 6):
+        trained_model = CNN1.train_model(model, train_x, train_y, verbose=1)
+        accuracy = CNN1.evaluate_model(trained_model, test_x, test_y)
+        print("Accuracy for run #" + str(run_no) + ":", accuracy)
 
 
 pd.set_option('display.max_columns', None)
 pd.set_option('display.width', None)
 pd.set_option('display.max_colwidth', None)
-main()
+# run_by_subject()
+run_all_data()
