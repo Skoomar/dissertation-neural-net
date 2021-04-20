@@ -5,7 +5,7 @@ from keras.utils import np_utils
 from scipy import stats
 from sklearn import preprocessing
 
-import CNN1
+import models
 
 pd.options.display.float_format = '{:.1f}'.format
 plt.style.use('ggplot')
@@ -186,12 +186,12 @@ def prepare_subject_data(data_path):
     return train_x, train_y_hot, test_x, test_y_hot
 
 
-def run_by_subject():
+def run_by_subject(iterations_per_subject=1):
     # make different models for different number of features
     # some subjects don't have data for certain classes so need to use different number of features for their model
-    cnn_18_classes = CNN1.create_model()
-    cnn_17_classes = CNN1.create_model(num_classes=17)
-    cnn_16_classes = CNN1.create_model(num_classes=16)
+    cnn_18_classes = models.basic_mlp()
+    cnn_17_classes = models.basic_mlp(num_classes=17)
+    cnn_16_classes = models.basic_mlp(num_classes=16)
     # TODO: SUBJECT 07 and 09 have no records for activity J, so need to change the model to have 17 features
     #  when training on their data
     # output = ""
@@ -218,11 +218,12 @@ def run_by_subject():
         else:
             raise ValueError("Subject is missing more features than expected, only has:", train_y.shape[1])
 
-        for run_no in range(1, 6):
+        for run_no in range(1, iterations_per_subject + 1):
             print("Run", run_no)
             # output += "\n\nRun: " + str(run_no)
-            trained_model = CNN1.train_model(model, train_x, train_y, verbose=0)
-            accuracy = CNN1.evaluate_model(trained_model, test_x, test_y)
+            # epochs and batch size [1] B. Oluwalade, S. Neela, J. Wawira, T. Adejumo, and S. Purkayastha, “Human Activity Recognition using Deep Learning Models on Smartphones and Smartwatches Sensor Data,” pp. 645–650, 2021, doi: 10.5220/0010325906450650.
+            trained_model = models.train_model(model, train_x, train_y, batch_size=32, epochs=148, verbose=0)
+            accuracy = models.evaluate_model(trained_model, test_x, test_y)
             print("Subject ID " + subject_id + ":", accuracy, "\n")
             # output += "\nSubject ID " + subject_id + " accuracy: " + str(accuracy)
 
@@ -231,17 +232,41 @@ def run_by_subject():
     # f.close()
 
 
-def run_all_data():
+def run_all_data(iterations=1):
     train_x, train_y, test_x, test_y = prepare_subject_data('wisdm-merged/complete_merge.txt')
-    model = CNN1.create_model()
-    for run_no in range(1, 6):
-        trained_model = CNN1.train_model(model, train_x, train_y, verbose=1)
-        accuracy = CNN1.evaluate_model(trained_model, test_x, test_y)
+    model = models.basic_mlp()
+    for run_no in range(1, iterations + 1):
+        trained_model = models.train_model(model, train_x, train_y, verbose=1)
+        accuracy = models.evaluate_model(trained_model, test_x, test_y)
         print("Accuracy for run #" + str(run_no) + ":", accuracy)
+
+
+def simple_run():
+    model = models.transfer_cnn()
+    for i in range(51):
+        subject_id = str(i)
+        if i < 10:
+            subject_id = '0' + subject_id
+
+        print("Subject " + subject_id)
+        # output += "\n\nSubject" + subject_id
+        train_x, train_y, test_x, test_y = prepare_subject_data(
+            'wisdm-merged/subject_full_merge/16' + subject_id + '_merged_data.txt')
+
+        if train_y.shape[1] != 18:
+            print("Subject only has:", train_y.shape[1], "features")
+            continue
+
+        # output += "\n\nRun: " + str(run_no)
+        # epochs and batch size [1] B. Oluwalade, S. Neela, J. Wawira, T. Adejumo, and S. Purkayastha, “Human Activity Recognition using Deep Learning Models on Smartphones and Smartwatches Sensor Data,” pp. 645–650, 2021, doi: 10.5220/0010325906450650.
+        trained_model = models.train_model(model, train_x, train_y, batch_size=32, epochs=148, verbose=0)
+        accuracy = models.evaluate_model(trained_model, test_x, test_y)
+        print("Subject ID " + subject_id + ":", accuracy, "\n")
 
 
 pd.set_option('display.max_columns', None)
 pd.set_option('display.width', None)
 pd.set_option('display.max_colwidth', None)
 # run_by_subject()
-run_all_data()
+# run_all_data()
+simple_run()

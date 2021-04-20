@@ -1,6 +1,16 @@
-# made by following https://towardsdatascience.com/human-activity-recognition-har-tutorial-with-keras-and-core-ml-part-1-8c05e365dfa0
-
 from tensorflow.keras import models, layers
+
+
+def basic_mlp(input_shape=(960,), num_classes=18):
+    model = models.Sequential()
+    model.add(layers.Dense(24, activation='relu', input_shape=input_shape))
+    model.add(layers.Dense(48, activation='relu'))
+    model.add(layers.Dense(24, activation='relu'))
+    model.add(layers.Dense(num_classes, activation='softmax'))
+    model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+    print(model.summary())
+    return model
+
 
 # From wikipedia
 # Number of filters
@@ -19,7 +29,7 @@ from tensorflow.keras import models, layers
 #
 # Very large input volumes may warrant 4×4 pooling in the lower layers.[72] However, choosing larger shapes will dramatically reduce the dimension of the signal, and may result in excess information loss. Often, non-overlapping pooling windows perform best.[65]
 
-def create_model(input_shape=(80, 12), num_classes=18):
+def basic_cnn(input_shape=(80, 12), num_classes=18):
     model = models.Sequential()
     # using filter size 128 and kernel size 10 for this Conv1D layer because: https://arxiv.org/ftp/arxiv/papers/2103/2103.03836.pdf
     # model.add(layers.Conv1D(128, 10, input_shape=(80, 12)))
@@ -37,7 +47,7 @@ def create_model(input_shape=(80, 12), num_classes=18):
 
 
 # model from [1] B. Oluwalade, S. Neela, J. Wawira, T. Adejumo, and S. Purkayastha, “Human Activity Recognition using Deep Learning Models on Smartphones and Smartwatches Sensor Data,” pp. 645–650, 2021, doi: 10.5220/0010325906450650.
-def create_model2(input_shape=(80, 12), num_classes=18):
+def paper_cnn(input_shape=(80, 12), num_classes=18):
     model = models.Sequential()
     model.add(layers.Conv1D(128, 10, activation='relu', input_shape=input_shape))
     model.add(layers.Dropout(0.4))
@@ -50,6 +60,28 @@ def create_model2(input_shape=(80, 12), num_classes=18):
     model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
     print(model.summary())
     return model
+
+
+def transfer_cnn(input_shape=(80, 12), num_classes=18):
+    model = models.Sequential()
+    model.add(layers.experimental.preprocessing.Discretization(12))
+    # model.add(layers.Embedding())
+    model.compile(loss='categorical_')
+    print(model.summary())
+
+
+# 226 epochs with a batch size of 32 - from Human Activity Recognition using Deep Learning Models on Smartphones and Smartwatches Sensor Data by Oluwalade, Bolu & Neela, Sunil
+# def rnn(input_shape=(80, 12), num_classses=18):
+
+
+def personalised_cnn(input_shape, num_classes=18):
+    model = models.Sequential()
+    model.add(layers)
+
+# From A. Wijekoon and N. Wiratunga, “LEARNING-TO-LEARN PERSONALISED HUMAN AC-TIVITY RECOGNITION MODELS.”
+def maml(input_shape, num_classes=18):
+    model = models.Sequential()
+    model.add(layers.TimeDistributed())
 
 
 def train_model(model, train_x, train_y, batch_size=400, epochs=50, verbose=1):
@@ -71,6 +103,3 @@ def train_model(model, train_x, train_y, batch_size=400, epochs=50, verbose=1):
 def evaluate_model(model, test_x, test_y, verbose=2):
     test_loss, test_accuracy = model.evaluate(test_x, test_y, verbose=verbose)
     return test_accuracy
-
-
-create_model2()
