@@ -3,9 +3,11 @@ import numpy as np
 import pandas as pd
 from keras.utils import np_utils
 from scipy import stats
+from scipy.fftpack import dct, idct
 from sklearn import preprocessing
-
+from sklearn.metrics import classification_report
 import models
+
 
 pd.options.display.float_format = '{:.1f}'.format
 plt.style.use('ggplot')
@@ -69,8 +71,7 @@ def plot_activity(activity, data):
 # split dataset so there is an appropriate amount of records for EACH activity in the training and test sets
 # avoids problem of e.g. some activities having 5 records in training and only 1 in test while others have 2 in training
 # and 4 in test
-def split_training_test(data, labels):
-    # activity_ids = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'O', 'P', 'Q', 'R', 'S']
+def split_training_test(data, labels, validation_split):
     encoded_activity_ids = np.arange(18)
     train_data = np.empty((0, data.shape[1], data.shape[2]))
     train_labels = np.empty((0))
@@ -87,7 +88,7 @@ def split_training_test(data, labels):
 
         # calculate a new random split for every activity label
         # TODO: try seeing what putting the same split for every label does to results
-        split = np.random.rand(len(matching_indexes)) < 0.70
+        split = np.random.rand(len(matching_indexes)) < validation_split
         # axis set to 0 to stop it flattening the data when it appends
         train_data = np.append(train_data, current_data[split], axis=0)
         train_labels = np.append(train_labels, current_labels[split])
@@ -129,7 +130,7 @@ def create_segments_and_labels(data, time_steps, step, label_name):
     return reshaped_segments, labels
 
 
-def prepare_subject_data(data_path):
+def prepare_subject_data(data_path, validation_split=0.7):
     """Get all data for the given subject, process it and split it into training and testing sets for the model"""
     dataset = read_data(data_path)
 
@@ -163,7 +164,7 @@ def prepare_subject_data(data_path):
 
     segments, labels = create_segments_and_labels(dataset, TIME_PERIODS, STEP_DISTANCE, ENCODED_LABEL)
 
-    train_x, train_y, test_x, test_y = split_training_test(segments, labels)
+    train_x, train_y, test_x, test_y = split_training_test(segments, labels, validation_split)
 
     # store the following variables to use for constructing the neural network
     # no of time periods within in one record (we've set it to 80 because each data point has an interval of 4 seconds)
@@ -242,7 +243,8 @@ def run_all_data(iterations=1):
 
 
 def simple_run():
-    model = models.transfer_cnn()
+    model = models.wijekoon_wiratunga()
+    cnn = models.paper_cnn()
     for i in range(51):
         subject_id = str(i)
         if i < 10:
@@ -251,7 +253,13 @@ def simple_run():
         print("Subject " + subject_id)
         # output += "\n\nSubject" + subject_id
         train_x, train_y, test_x, test_y = prepare_subject_data(
-            'wisdm-merged/subject_full_merge/16' + subject_id + '_merged_data.txt')
+            'wisdm-merged/subject_full_merge/16' + subject_id + '_merged_data.txt', 0.7)
+        print(len(train_y), len(test_y))
+
+        dct_train_x = dct(train_x, norm='ortho')
+        # dct_train_x = dct(dct(train_x.T, norm='ortho').T, norm='ortho')
+
+        # tri = idct(idct(dct_train_x.T, norm='ortho').T, norm='ortho')
 
         if train_y.shape[1] != 18:
             print("Subject only has:", train_y.shape[1], "features")
@@ -259,14 +267,24 @@ def simple_run():
 
         # output += "\n\nRun: " + str(run_no)
         # epochs and batch size [1] B. Oluwalade, S. Neela, J. Wawira, T. Adejumo, and S. Purkayastha, “Human Activity Recognition using Deep Learning Models on Smartphones and Smartwatches Sensor Data,” pp. 645–650, 2021, doi: 10.5220/0010325906450650.
-        trained_model = models.train_model(model, train_x, train_y, batch_size=32, epochs=148, verbose=0)
+        trained_model = models.train_model(model, dct_train_x, train_y, batch_size=32, epochs=25, verbose=1)
+        cnn_trained = models.train_model(cnn, train_x, train_y, batch_size=32, epochs=25, verbose=2)
         accuracy = models.evaluate_model(trained_model, test_x, test_y)
+        cnn_accuracy = models.evaluate_model(cnn_trained, test_x, test_y)
         print("Subject ID " + subject_id + ":", accuracy, "\n")
+        print("Benchmark CNN accuracy:", cnn_accuracy, "\n")
 
 
 pd.set_option('display.max_columns', None)
 pd.set_option('display.width', None)
 pd.set_option('display.max_colwidth', None)
+
+activity_ids = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'O', 'P', 'Q', 'R', 'S']
+batch_size = 128
+epochs = 10
+dct_length = 60
+
+feature_data = extract_features()
 # run_by_subject()
 # run_all_data()
 simple_run()

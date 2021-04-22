@@ -78,11 +78,43 @@ def personalised_cnn(input_shape, num_classes=18):
     model = models.Sequential()
     model.add(layers)
 
-# From A. Wijekoon and N. Wiratunga, “LEARNING-TO-LEARN PERSONALISED HUMAN AC-TIVITY RECOGNITION MODELS.”
-def maml(input_shape, num_classes=18):
-    model = models.Sequential()
-    model.add(layers.TimeDistributed())
 
+# From A. Wijekoon and N. Wiratunga, “LEARNING-TO-LEARN PERSONALISED HUMAN AC-TIVITY RECOGNITION MODELS.”
+def maml(input_shape=(80, 12), num_classes=18):
+    model = models.Sequential()
+    model.add(layers.TimeDistributed(layers.Dense(num_classes * 2), input_shape=input_shape))
+    model.add(layers.Conv1D(32, 5, activation='relu'))
+    model.add(layers.MaxPooling1D(pool_size=2))
+    model.add(layers.BatchNormalization())
+    model.add(layers.TimeDistributed(layers.Dense(num_classes * 4)))
+    model.add(layers.Conv1D(64, 5, activation='relu'))
+    model.add(layers.MaxPooling1D(pool_size=2))
+    model.add(layers.BatchNormalization())
+    model.add(layers.TimeDistributed(layers.Dense(num_classes * 2)))
+    # model.add(layers.Flatten())
+    model.add(layers.LSTM(1200))
+    model.add(layers.BatchNormalization())
+    model.add(layers.Dense(600, activation='relu'))
+    model.add(layers.BatchNormalization())
+    model.add(layers.Dense(100, activation='relu'))
+    model.add(layers.BatchNormalization())
+    model.add(layers.Dense(num_classes, activation='softmax'))
+    model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+    print(model.summary())
+    return model
+
+def wijekoon_wiratunga(input_shape=(80, 12), num_classes=18):
+    model = models.Sequential()
+    model.add(layers.TimeDistributed(layers.Dense(num_classes * 2), input_shape=input_shape))
+    model.add(layers.Conv1D(32, 5, activation='relu'))
+    model.add(layers.MaxPooling1D(pool_size=2))
+    model.add(layers.BatchNormalization())
+    model.add(layers.TimeDistributed(layers.Dense(num_classes * 2, activation='relu')))
+    model.add(layers.Flatten())
+    model.add(layers.Dense(num_classes, activation='softmax'))
+    model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+    print(model.summary())
+    return model
 
 def train_model(model, train_x, train_y, batch_size=400, epochs=50, verbose=1):
     # our Hyperparameters - reasons to use certain hyperparameters: https://towardsdatascience.com/epoch-vs-iterations-vs-batch-size-4dfb9c7ce9c9
