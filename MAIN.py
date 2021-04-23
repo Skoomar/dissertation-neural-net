@@ -134,8 +134,6 @@ def prepare_subject_data(data_path, validation_split=0.7):
     """Get all data for the given subject, process it and split it into training and testing sets for the model"""
     dataset = read_data(data_path)
 
-    # plot_activity("thing", dataset)
-
     # TODO: think putting a BatchNormalisation layer in the model might be better than this
     dataset['x-axis_accel_phone'] = feature_normalise(dataset['x-axis_accel_phone'])
     dataset['y-axis_accel_phone'] = feature_normalise(dataset['y-axis_accel_phone'])
@@ -275,16 +273,48 @@ def simple_run():
         print("Benchmark CNN accuracy:", cnn_accuracy, "\n")
 
 
+def split_windows(data, window_length, overlap_ratio=None):
+    outputs = []
+    i = 0
+    N = len(data)
+    increment = int(window_length * overlap_ratio)
+    while i + window_length < N:
+        start = i
+        end = start + window_length
+        outs = [a[1:] for a in data[start:end]]
+        i = int(i + (increment))
+        outputs.append(outs)
+    return outputs
+
+
+
+def extract_features(data, dct_length, win_len):
+    classes = {}
+    for activity in data:
+        df = data[activity]
+        wts = split_windows(df, win_len, overlap_ratio=1)
+        dct_wts = dct(wts, comps=dct_length)
+        classes[activity] = dct_wts
+    people
+
+
+
+
+def w_and_w_run():
+    activity_ids = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'O', 'P', 'Q', 'R', 'S']
+    batch_size = 128
+    epochs = 10
+    dct_length = 60
+
+    train_x, train_y, test_x, test_y = prepare_subject_data('wisdm-merged/subject_full_merge/1600_merged_data.txt')
+    feature_data = extract_features()
+
+
 pd.set_option('display.max_columns', None)
 pd.set_option('display.width', None)
 pd.set_option('display.max_colwidth', None)
 
-activity_ids = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'O', 'P', 'Q', 'R', 'S']
-batch_size = 128
-epochs = 10
-dct_length = 60
 
-feature_data = extract_features()
 # run_by_subject()
 # run_all_data()
 simple_run()
