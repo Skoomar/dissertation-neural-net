@@ -184,7 +184,7 @@ train_y_hot = np_utils.to_categorical(train_y, num_classes)
 test_y_hot = np_utils.to_categorical(test_y, num_classes)
 
 model = basic_model.create_model(input_shape, num_classes)
-
+print(train_x.shape)
 trained_model = basic_model.train_model(model, train_x, train_y_hot, verbose=0)
 print(basic_model.evaluate_model(trained_model, test_x, test_y_hot, verbose=0))
 #

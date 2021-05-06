@@ -2,12 +2,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from keras.utils import np_utils
-from scipy import stats
-from scipy.fftpack import dct, idct
+from scipy import stats, fftpack
 from sklearn import preprocessing
 from sklearn.metrics import classification_report
-import models
-
+import models_spec
+import math
 
 pd.options.display.float_format = '{:.1f}'.format
 plt.style.use('ggplot')
@@ -71,7 +70,7 @@ def plot_activity(activity, data):
 # split dataset so there is an appropriate amount of records for EACH activity in the training and test sets
 # avoids problem of e.g. some activities having 5 records in training and only 1 in test while others have 2 in training
 # and 4 in test
-def split_training_test(data, labels, validation_split):
+def split_training_test(data, labels, validation_split, random):
     encoded_activity_ids = np.arange(18)
     train_data = np.empty((0, data.shape[1], data.shape[2]))
     train_labels = np.empty((0))
@@ -94,15 +93,23 @@ def split_training_test(data, labels, validation_split):
         train_labels = np.append(train_labels, current_labels[split])
         test_data = np.append(test_data, current_data[~split], axis=0)
         test_labels = np.append(test_labels, current_labels[~split])
+        # else:
+            #     split = math.floor(len(labels) * validation_split)
+            #     train_data = np.append(train_data, current_data[:split], axis=0)
+            #     train_labels = np.append(train_labels, current_labels[:split])
+            #     test_data = np.append(test_data, current_data[split:], axis=0)
+            #     test_labels = np.append(test_labels, current_labels[split:])
+
+
 
     return train_data, train_labels, test_data, test_labels
 
 
-def create_segments_and_labels(data, time_steps, step, label_name):
+def create_windows_and_labels(data, time_steps, step, label_name):
     # features are signals on the x, y, and z axes for each accel and gyro of both phone and watch
     N_FEATURES = 12
 
-    segments = []
+    windows = []
     labels = []
     for i in range(0, len(data) - time_steps, step):
         xap = data['x-axis_accel_phone'].values[i: i + time_steps]
@@ -120,21 +127,41 @@ def create_segments_and_labels(data, time_steps, step, label_name):
 
         # define this segment with the activity that occurs most in this segment
         label = stats.mode(data[label_name][i: i + time_steps])[0][0]
-        segments.append([xap, yap, zap, xgp, ygp, zgp, xaw, yaw, zaw, xgw, ygw, zgw])
+        windows.append([xap, yap, zap, xgp, ygp, zgp, xaw, yaw, zaw, xgw, ygw, zgw])
         labels.append(label)
 
-    # bring segments into a better shape
-    reshaped_segments = np.asarray(segments, dtype=np.float32).reshape(-1, time_steps, N_FEATURES)
+    # bring windows into a better shape
+    reshaped_segments = np.asarray(windows, dtype=np.float32)  # .reshape(-1, time_steps, N_FEATURES)
     labels = np.asarray(labels)
 
     return reshaped_segments, labels
 
 
-def prepare_subject_data(data_path, validation_split=0.7):
+def dct_windows(data, window_length=10):
+    """Applies Discrete Cosine Transform to each axis every 1 second (by default) of the given data"""
+    # features are signals on the x, y, and z axes for each accel and gyro of both phone and watch
+    N_FEATURES = 12
+    dct_data = []
+    for window in data:
+        dct_window = []
+        for axis in range(N_FEATURES):
+            dct_axis = np.array([])
+            for i in range(0, window.shape[1], window_length):
+                split_axis = window[axis][i:i + window_length]
+                dct_split_axis = np.abs(fftpack.dct(split_axis, norm='ortho'))
+                dct_axis = np.append(dct_axis, dct_split_axis)
+            dct_window.append(dct_axis)
+        dct_data.append(dct_window)
+    return np.asarray(dct_data)
+
+
+def prepare_subject_data(data_path, window_size=80, window_overlap=40, validation_split=0.7, random_split=True,
+                         perform_dct=False):
     """Get all data for the given subject, process it and split it into training and testing sets for the model"""
     dataset = read_data(data_path)
 
     # TODO: think putting a BatchNormalisation layer in the model might be better than this
+    # TODO: DO THE NORMALISATION AFTER IT'S SPLIT INTO TRAINING/TESTING - and need to normalise the testing set with whatever scale is made for the training
     dataset['x-axis_accel_phone'] = feature_normalise(dataset['x-axis_accel_phone'])
     dataset['y-axis_accel_phone'] = feature_normalise(dataset['y-axis_accel_phone'])
     dataset['z-axis_accel_phone'] = feature_normalise(dataset['z-axis_accel_phone'])
@@ -156,13 +183,18 @@ def prepare_subject_data(data_path, validation_split=0.7):
     dataset[ENCODED_LABEL] = le.fit_transform(dataset['activity'].values.ravel())
 
     # number of steps within one time segment
-    TIME_PERIODS = 80
-    # steps to take from one segment to next - if same as TIME_PERIODS, then no overlap occurs between segments
-    STEP_DISTANCE = 40
+    # using 8 second window size
+    # TIME_PERIODS = 80
+    # steps to take from one segment to next - if same as TIME_PERIODS, then no overlap occurs between windows
+    # STEP_DISTANCE = 40
+    # use window_size and overlap instead of TIME_PERIODS and STEP_DISTANCE so we can change it when calling the function
+    windows, labels = create_windows_and_labels(dataset, window_size, window_overlap, ENCODED_LABEL)
+    # if perform_dct:
+    # windows_dcted = dct_windows(windows).reshape(-1, window_size, 12)
 
-    segments, labels = create_segments_and_labels(dataset, TIME_PERIODS, STEP_DISTANCE, ENCODED_LABEL)
-
-    train_x, train_y, test_x, test_y = split_training_test(segments, labels, validation_split)
+    windows = windows.reshape(-1, window_size, 12)
+    train_x, train_y, test_x, test_y = split_training_test(windows, labels, validation_split, random_split)
+    # dct_train_x, dct_train_y, dct_test_x, dct_test_y = split_training_test(windows_dcted, labels, validation_split, random_split)
 
     # store the following variables to use for constructing the neural network
     # no of time periods within in one record (we've set it to 80 because each data point has an interval of 4 seconds)
@@ -176,21 +208,27 @@ def prepare_subject_data(data_path, validation_split=0.7):
     train_y = train_y.astype('float32')
     test_x = test_x.astype('float32')
     test_y = test_y.astype('float32')
+    # dct_train_x = dct_train_x.astype('float32')
+    # dct_train_y = dct_train_y.astype('float32')
+    # dct_test_x = dct_test_x.astype('float32')
+    # dct_test_y = dct_test_y.astype('float32')
 
     # perform one-hot encoding on the labels
     # TODO: try doing this one-hot encoding the way the other tutorial does so i don't have to import keras as well
     train_y_hot = np_utils.to_categorical(train_y, num_classes)
     test_y_hot = np_utils.to_categorical(test_y, num_classes)
+    # dct_train_y_hot = np_utils.to_categorical(dct_train_y, num_classes)
+    # dct_test_y_hot = np_utils.to_categorical(dct_test_y, num_classes)
 
-    return train_x, train_y_hot, test_x, test_y_hot
+    return train_x, train_y_hot, test_x, test_y_hot#, dct_train_x, dct_train_y, dct_test_x, dct_test_y
 
 
 def run_by_subject(iterations_per_subject=1):
     # make different models for different number of features
     # some subjects don't have data for certain classes so need to use different number of features for their model
-    cnn_18_classes = models.basic_mlp()
-    cnn_17_classes = models.basic_mlp(num_classes=17)
-    cnn_16_classes = models.basic_mlp(num_classes=16)
+    cnn_18_classes = models_spec.basic_mlp()
+    cnn_17_classes = models_spec.basic_mlp(num_classes=17)
+    cnn_16_classes = models_spec.basic_mlp(num_classes=16)
     # TODO: SUBJECT 07 and 09 have no records for activity J, so need to change the model to have 17 features
     #  when training on their data
     # output = ""
@@ -221,8 +259,8 @@ def run_by_subject(iterations_per_subject=1):
             print("Run", run_no)
             # output += "\n\nRun: " + str(run_no)
             # epochs and batch size [1] B. Oluwalade, S. Neela, J. Wawira, T. Adejumo, and S. Purkayastha, “Human Activity Recognition using Deep Learning Models on Smartphones and Smartwatches Sensor Data,” pp. 645–650, 2021, doi: 10.5220/0010325906450650.
-            trained_model = models.train_model(model, train_x, train_y, batch_size=32, epochs=148, verbose=0)
-            accuracy = models.evaluate_model(trained_model, test_x, test_y)
+            trained_model = models_spec.train_model(model, train_x, train_y, batch_size=32, epochs=148, verbose=0)
+            accuracy = models_spec.evaluate_model(trained_model, test_x, test_y)
             print("Subject ID " + subject_id + ":", accuracy, "\n")
             # output += "\nSubject ID " + subject_id + " accuracy: " + str(accuracy)
 
@@ -233,16 +271,17 @@ def run_by_subject(iterations_per_subject=1):
 
 def run_all_data(iterations=1):
     train_x, train_y, test_x, test_y = prepare_subject_data('wisdm-merged/complete_merge.txt')
-    model = models.basic_mlp()
+    model = models_spec.basic_mlp()
     for run_no in range(1, iterations + 1):
-        trained_model = models.train_model(model, train_x, train_y, verbose=1)
-        accuracy = models.evaluate_model(trained_model, test_x, test_y)
+        trained_model = models_spec.train_model(model, train_x, train_y, verbose=1)
+        accuracy = models_spec.evaluate_model(trained_model, test_x, test_y)
         print("Accuracy for run #" + str(run_no) + ":", accuracy)
 
 
 def simple_run():
-    model = models.wijekoon_wiratunga()
-    cnn = models.paper_cnn()
+    # model = models.wijekoon_wiratunga()
+    # model = models_spec.paper_cnn()
+    model = models_spec.basic_lstm()
     for i in range(51):
         subject_id = str(i)
         if i < 10:
@@ -251,13 +290,8 @@ def simple_run():
         print("Subject " + subject_id)
         # output += "\n\nSubject" + subject_id
         train_x, train_y, test_x, test_y = prepare_subject_data(
-            'wisdm-merged/subject_full_merge/16' + subject_id + '_merged_data.txt', 0.7)
-        print(len(train_y), len(test_y))
-
-        dct_train_x = dct(train_x, norm='ortho')
-        # dct_train_x = dct(dct(train_x.T, norm='ortho').T, norm='ortho')
-
-        # tri = idct(idct(dct_train_x.T, norm='ortho').T, norm='ortho')
+            'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/16' + subject_id + '_merged_data.txt', validation_split=0.7,
+            random_split=True)
 
         if train_y.shape[1] != 18:
             print("Subject only has:", train_y.shape[1], "features")
@@ -265,39 +299,9 @@ def simple_run():
 
         # output += "\n\nRun: " + str(run_no)
         # epochs and batch size [1] B. Oluwalade, S. Neela, J. Wawira, T. Adejumo, and S. Purkayastha, “Human Activity Recognition using Deep Learning Models on Smartphones and Smartwatches Sensor Data,” pp. 645–650, 2021, doi: 10.5220/0010325906450650.
-        trained_model = models.train_model(model, dct_train_x, train_y, batch_size=32, epochs=25, verbose=1)
-        cnn_trained = models.train_model(cnn, train_x, train_y, batch_size=32, epochs=25, verbose=2)
-        accuracy = models.evaluate_model(trained_model, test_x, test_y)
-        cnn_accuracy = models.evaluate_model(cnn_trained, test_x, test_y)
+        trained_model = models_spec.train_model(model, train_x, train_y, batch_size=32, epochs=25, verbose=1)
+        accuracy = models_spec.evaluate_model(trained_model, test_x, test_y)
         print("Subject ID " + subject_id + ":", accuracy, "\n")
-        print("Benchmark CNN accuracy:", cnn_accuracy, "\n")
-
-
-def split_windows(data, window_length, overlap_ratio=None):
-    outputs = []
-    i = 0
-    N = len(data)
-    increment = int(window_length * overlap_ratio)
-    while i + window_length < N:
-        start = i
-        end = start + window_length
-        outs = [a[1:] for a in data[start:end]]
-        i = int(i + (increment))
-        outputs.append(outs)
-    return outputs
-
-
-
-def extract_features(data, dct_length, win_len):
-    classes = {}
-    for activity in data:
-        df = data[activity]
-        wts = split_windows(df, win_len, overlap_ratio=1)
-        dct_wts = dct(wts, comps=dct_length)
-        classes[activity] = dct_wts
-    people
-
-
 
 
 def w_and_w_run():
@@ -306,15 +310,40 @@ def w_and_w_run():
     epochs = 10
     dct_length = 60
 
-    train_x, train_y, test_x, test_y = prepare_subject_data('wisdm-merged/subject_full_merge/1600_merged_data.txt')
-    feature_data = extract_features()
+    ww = models_spec.paper_cnn()
+    cnn = models_spec.paper_cnn()
+    for i in range(51):
+        subject_id = str(i)
+        if i < 10:
+            subject_id = '0' + subject_id
+
+        print("Subject " + subject_id)
+        # output += "\n\nSubject" + subject_id
+        train_x, train_y, test_x, test_y, dct_train_x, dct_train_y, dct_test_x, dct_test_y = prepare_subject_data(
+            'wisdm-merged/subject_full_merge/16' + subject_id + '_merged_data.txt', validation_split=0.1,
+            random_split=True)
+
+
+        if train_y.shape[1] != 18:
+            print("Subject only has:", train_y.shape[1], "features")
+            continue
+
+        # epochs and batch size [1] B. Oluwalade, S. Neela, J. Wawira, T. Adejumo, and S. Purkayastha, “Human Activity Recognition using Deep Learning Models on Smartphones and Smartwatches Sensor Data,” pp. 645–650, 2021, doi: 10.5220/0010325906450650.
+        trained_ww = models_spec.train_model(ww, dct_train_x, dct_train_y, batch_size=32, epochs=25, verbose=1)
+        trained_cnn = models_spec.train_model(cnn, train_x, train_y, batch_size=32, epochs=25, verbose=1)
+        ww_acc = models_spec.evaluate_model(trained_ww, dct_test_x, dct_test_y)
+        print("Subject ID" + subject_id + ":", ww_acc, "\n")
+        cnn_acc = models_spec.evaluate_model(trained_cnn, test_x, test_y)
+        print("Subject ID " + subject_id + ":", cnn_acc, "\n")
 
 
 pd.set_option('display.max_columns', None)
 pd.set_option('display.width', None)
 pd.set_option('display.max_colwidth', None)
+# np.set_printoptions(threshold=np.inf)
 
 
 # run_by_subject()
 # run_all_data()
 simple_run()
+# w_and_w_run()
