@@ -1,5 +1,7 @@
 import tensorflow as tf
 from tensorflow.keras import models, layers
+
+
 # print(tf.config.list_physical_devices())
 
 def basic_mlp(input_shape=(960,), num_classes=18):
@@ -104,6 +106,7 @@ def maml(input_shape=(80, 12), num_classes=18):
     print(model.summary())
     return model
 
+
 def wijekoon_wiratunga(input_shape=(80, 12), num_classes=18):
     model = models.Sequential()
     model.add(layers.TimeDistributed(layers.Dense(num_classes * 2), input_shape=input_shape))
@@ -129,9 +132,7 @@ def basic_lstm(input_shape=(80, 12), num_classes=18):
     return model
 
 
-def parallel_test(input_shape=(80, 12), num_classes=18):
-    x = 80
-    y = 12
+def parallel_test(input_shape=(80, 3), num_classes=18):
     filter_size = 64
     kernel_size = 12
     num_classes = 18
@@ -147,10 +148,42 @@ def parallel_test(input_shape=(80, 12), num_classes=18):
     f2 = layers.Flatten()(p2)
 
     x = layers.concatenate([f1, f2])
-    x = layers.Dense(num_classes, activation='sigmoid')(x)
+    x = layers.Dense(num_classes, activation='softmax')(x)
 
     model = models.Model(inputs=[input_1, input_2], outputs=[x])
-    model.compile('adam', 'binary_crossentropy', metrics=['accuracy'])
+    model.compile('adam', 'categorical_crossentropy', metrics=['accuracy'])
+
+
+def parallel_test2(input_shape=(80, 3), num_classes=18):
+    filter_size = 64
+    kernel_size = 12
+
+    ap = layers.Input(shape=input_shape)
+    gp = layers.Input(shape=input_shape)
+    aw = layers.Input(shape=input_shape)
+    gw = layers.Input(shape=input_shape)
+
+    accel_conv = layers.Conv1D(filter_size, kernel_size)(ap)
+    accel_conv = layers.BatchNormalization()(accel_conv)
+    accel_conv = layers.Activation('relu')(accel_conv)
+    accel_conv = layers.Dropout(0.2)(accel_conv)
+    # accel_conv = layers.MaxPooling1D(pool_size=2)(accel_conv)
+    accel_conv = layers.Flatten()(accel_conv)
+
+    gyro_conv = layers.Conv1D(filter_size, kernel_size)(gp)
+    gyro_conv = layers.BatchNormalization()(gyro_conv)
+    gyro_conv = layers.Activation('relu')(gyro_conv)
+    gyro_conv = layers.Dropout(0.2)(gyro_conv)
+    # gyro_conv = layers.MaxPooling1D(pool_size=2)(gyro_conv)
+    gyro_conv = layers.Flatten()(gyro_conv)
+
+    merge_layer = layers.concatenate([accel_conv, gyro_conv])
+    out = layers.Dense(num_classes, activation='softmax')(merge_layer)
+
+    model = models.Model(inputs=[ap, gp], outputs=[out])
+    model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+    print(model.summary())
+    return model
 
 
 def deep_sense(input_shape=(80, 12), num_classes=18):
@@ -206,7 +239,7 @@ def buffelli(input_shape=(80, 12), num_classes=18):
     model = models.Sequential()
 
 
-def train_model(model, train_x, train_y, batch_size=400, epochs=50, verbose=1):
+def train_model(model, train_x, train_y, batch_size, epochs, verbose=1):
     # our Hyperparameters - reasons to use certain hyperparameters: https://towardsdatascience.com/epoch-vs-iterations-vs-batch-size-4dfb9c7ce9c9
     # BATCH_SIZE = 400
     BATCH_SIZE = 32
@@ -217,11 +250,26 @@ def train_model(model, train_x, train_y, batch_size=400, epochs=50, verbose=1):
                         batch_size=batch_size,
                         epochs=epochs,
                         # callbacks=callbacks_list,
-                        # validation_data=(test_x, testy_y_hot),
+                        # validation_data=(test_x, test_y),
                         verbose=verbose)
+    return model
+
+
+def train_model_by_sensor(model, train_ap, train_gp, train_aw, train_gw, train_labels, batch_size, epochs, verbose=1):
+    model.fit([train_ap, train_gp], train_labels,
+              batch_size=batch_size,
+              epochs=epochs,
+              # callbacks=callbacks_list,
+              # validation_data=(test_x, testy_y_hot),
+              verbose=verbose)
     return model
 
 
 def evaluate_model(model, test_x, test_y, verbose=2):
     test_loss, test_accuracy = model.evaluate(test_x, test_y, verbose=verbose)
+    return test_accuracy
+
+
+def evaluate_model_by_sensor(model, test_ap, test_gp, test_aw, test_gw, test_labels, verbose=2):
+    test_loss, test_accuracy = model.evaluate([test_ap, test_gp], test_labels, verbose=verbose)
     return test_accuracy

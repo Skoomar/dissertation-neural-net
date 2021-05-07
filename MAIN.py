@@ -70,9 +70,10 @@ def plot_activity(activity, data):
 # split dataset so there is an appropriate amount of records for EACH activity in the training and test sets
 # avoids problem of e.g. some activities having 5 records in training and only 1 in test while others have 2 in training
 # and 4 in test
-def split_training_test(data, labels, validation_split, random):
+def split_train_test(data, labels, validation_split=0.7, random=True):
     encoded_activity_ids = np.arange(18)
-    train_data = np.empty((0, data.shape[1], data.shape[2]))
+    # train_data = np.empty((0, data.shape[1], data.shape[2]))
+    train_data = np.empty((0, *data.shape[1:]))
     train_labels = np.empty((0))
     test_data = np.empty((0, data.shape[1], data.shape[2]))
     test_labels = np.empty((0))
@@ -85,37 +86,78 @@ def split_training_test(data, labels, validation_split, random):
         current_data = data[matching_indexes]
         current_labels = labels[matching_indexes]
 
-        # calculate a new random split for every activity label
-        # TODO: try seeing what putting the same split for every label does to results
-        split = np.random.rand(len(matching_indexes)) < validation_split
-        # axis set to 0 to stop it flattening the data when it appends
-        train_data = np.append(train_data, current_data[split], axis=0)
-        train_labels = np.append(train_labels, current_labels[split])
-        test_data = np.append(test_data, current_data[~split], axis=0)
-        test_labels = np.append(test_labels, current_labels[~split])
-        # else:
-        #     split = math.floor(len(labels) * validation_split)
-        #     train_data = np.append(train_data, current_data[:split], axis=0)
-        #     train_labels = np.append(train_labels, current_labels[:split])
-        #     test_data = np.append(test_data, current_data[split:], axis=0)
-        #     test_labels = np.append(test_labels, current_labels[split:])
+        if random:
+            # calculate a new random split for every activity label
+            # TODO: try seeing what putting the same split for every label does to results
+            split = np.random.rand(len(matching_indexes)) < validation_split
+            # axis set to 0 to stop it flattening the data when it appends
+            train_data = np.append(train_data, current_data[split], axis=0)
+            train_labels = np.append(train_labels, current_labels[split])
+            test_data = np.append(test_data, current_data[~split], axis=0)
+            test_labels = np.append(test_labels, current_labels[~split])
+        else:
+            split = math.floor(len(matching_indexes) * validation_split)
+            train_data = np.append(train_data, current_data[:split], axis=0)
+            train_labels = np.append(train_labels, current_labels[:split])
+            test_data = np.append(test_data, current_data[split:], axis=0)
+            test_labels = np.append(test_labels, current_labels[split:])
 
     return train_data, train_labels, test_data, test_labels
 
 
-def sensor_split_training_test(dataset, validation_split, random_split):
+def split_sensors_train_test(accel_phone, gyro_phone, accel_watch, gyro_watch, labels, validation_split=0.7,
+                             random=True):
+    train_ap = np.empty((0, *accel_phone.shape[1:]))
+    train_gp = np.empty((0, *gyro_phone.shape[1:]))
+    train_aw = np.empty((0, *accel_watch.shape[1:]))
+    train_gw = np.empty((0, *gyro_watch.shape[1:]))
+    train_labels = np.empty((0))
+    test_ap = np.empty((0, *accel_phone.shape[1:]))
+    test_gp = np.empty((0, *gyro_phone.shape[1:]))
+    test_aw = np.empty((0, *accel_watch.shape[1:]))
+    test_gw = np.empty((0, *gyro_watch.shape[1:]))
+    test_labels = np.empty((0))
+
     encoded_activity_ids = np.arange(18)
-    training = pd.DataFrame()
-    testing = pd.DataFrame()
-
     for activity in encoded_activity_ids:
-        activity_subset = dataset[dataset['ActivityEncoded'] == activity].reset_index(drop=True)
+        matching_indexes = np.where(labels == activity)[0]
+        current_ap = accel_phone[matching_indexes]
+        current_gp = gyro_phone[matching_indexes]
+        current_aw = accel_watch[matching_indexes]
+        current_gw = gyro_watch[matching_indexes]
+        current_labels = labels[matching_indexes]
 
-        split = np.random.rand(len(activity_subset)) < validation_split
-        training = training.append(activity_subset.loc[split])
-        testing = testing.append(activity_subset.loc[~split])
+        if random:
+            # calculate a new random split for every activity label
+            # TODO: try seeing what putting the same split for every label does to results
+            split = np.random.rand(len(matching_indexes)) < validation_split
+            # axis set to 0 to stop it flattening the data when it appends
+            train_ap = np.append(train_ap, current_ap[split], axis=0)
+            train_gp = np.append(train_gp, current_gp[split], axis=0)
+            train_aw = np.append(train_aw, current_aw[split], axis=0)
+            train_gw = np.append(train_gw, current_gw[split], axis=0)
+            train_labels = np.append(train_labels, current_labels[split])
 
-    return training.reset_index(drop=True), testing.reset_index(drop=True)
+            test_ap = np.append(test_ap, current_ap[~split], axis=0)
+            test_gp = np.append(test_gp, current_gp[~split], axis=0)
+            test_aw = np.append(test_aw, current_aw[~split], axis=0)
+            test_gw = np.append(test_gw, current_gw[~split], axis=0)
+            test_labels = np.append(test_labels, current_labels[~split])
+        else:
+            split = math.floor(len(matching_indexes) * validation_split)
+
+            train_ap = np.append(train_ap, current_ap[:split], axis=0)
+            train_gp = np.append(train_gp, current_gp[:split], axis=0)
+            train_aw = np.append(train_aw, current_aw[:split], axis=0)
+            train_gw = np.append(train_gw, current_gw[:split], axis=0)
+            train_labels = np.append(train_labels, current_labels[:split])
+
+            test_ap = np.append(test_ap, current_ap[split:], axis=0)
+            test_gp = np.append(test_gp, current_gp[split:], axis=0)
+            test_aw = np.append(test_aw, current_aw[split:], axis=0)
+            test_gw = np.append(test_gw, current_gw[split:], axis=0)
+            test_labels = np.append(test_labels, current_labels[split:])
+    return train_ap, train_gp, train_aw, train_gw, train_labels, test_ap, test_gp, test_aw, test_gw, test_labels
 
 
 def create_windows_and_labels(data, time_steps, step):
@@ -144,7 +186,7 @@ def create_windows_and_labels(data, time_steps, step):
         labels.append(label)
 
     # bring windows into a better shape
-    reshaped_segments = np.asarray(windows, dtype=np.float32)  # .reshape(-1, time_steps, N_FEATURES)
+    reshaped_segments = np.asarray(windows, dtype=np.float32).reshape(-1, time_steps, N_FEATURES)
     labels = np.asarray(labels)
 
     return reshaped_segments, labels
@@ -163,10 +205,10 @@ def create_sensor_window(data, time_steps, step, sensor_name, device_name):
 
 def create_windows_by_sensor(data, time_steps, step):
     # create windows for accelerometer and gyroscope of both phone and watch
-    ap = create_sensor_window(data, time_steps, step, 'accel', 'phone')
-    gp = create_sensor_window(data, time_steps, step, 'gyro', 'phone')
-    aw = create_sensor_window(data, time_steps, step, 'accel', 'watch')
-    gw = create_sensor_window(data, time_steps, step, 'gyro', 'watch')
+    accel_phone = create_sensor_window(data, time_steps, step, 'accel', 'phone')
+    gyro_phone = create_sensor_window(data, time_steps, step, 'gyro', 'phone')
+    accel_watch = create_sensor_window(data, time_steps, step, 'accel', 'watch')
+    gyro_watch = create_sensor_window(data, time_steps, step, 'gyro', 'watch')
 
     # create corresponding labels for the above windows
     labels = []
@@ -175,7 +217,7 @@ def create_windows_by_sensor(data, time_steps, step):
         labels.append(label)
     labels = np.asarray(labels)
 
-    return ap, gp, aw, gw, labels
+    return accel_phone, gyro_phone, accel_watch, gyro_watch, labels
 
 
 def dct_windows(data, window_length=10):
@@ -230,11 +272,12 @@ def prepare_subject_data(data_path, window_size=80, window_overlap=40, validatio
     # STEP_DISTANCE = 40
     # use window_size and overlap instead of TIME_PERIODS and STEP_DISTANCE so we can change it when calling the function
     windows, labels = create_windows_and_labels(dataset, window_size, window_overlap)
+
     # if perform_dct:
     # windows_dcted = dct_windows(windows).reshape(-1, window_size, 12)
 
     windows = windows.reshape(-1, window_size, 12)
-    train_x, train_y, test_x, test_y = split_training_test(windows, labels, validation_split, random_split)
+    train_x, train_y, test_x, test_y = split_train_test(windows, labels, validation_split, random_split)
     # dct_train_x, dct_train_y, dct_test_x, dct_test_y = split_training_test(windows_dcted, labels, validation_split, random_split)
 
     # store the following variables to use for constructing the neural network
@@ -292,37 +335,33 @@ def prepare_subject_data_by_sensor(data_path, window_size=80, window_overlap=40,
     # add the new encoded labels as a column in the dataset
     dataset[ENCODED_LABEL] = le.fit_transform(dataset['activity'].values.ravel())
 
-    windows, labels = create_windows_and_labels(dataset, window_size, window_overlap)
-    windows = windows.reshape(-1, window_size, 12)
-    train_x, train_y, test_x, test_y = split_training_test(windows, labels, validation_split, random_split)
-    print(train_x.shape, train_y.shape, test_y.shape, test_y.shape)
+    ##### original method testing ####
+    # windows, labels = create_windows_and_labels(dataset, window_size, window_overlap)
+    # train_x, train_y, test_x, test_y = split_train_test(windows, labels, validation_split, random_split)
+    ##################################
 
-    train, test = sensor_split_training_test(dataset, validation_split, random_split)
-
-    train_accel_phone, train_gyro_phone, train_accel_watch, train_gyro_watch, train_labels = create_windows_by_sensor(
-        train, window_size,
-        window_overlap)
-    test_accel_phone, test_gyro_phone, test_accel_watch, test_gyro_watch, test_labels = create_windows_by_sensor(
-        test, window_size,
-        window_overlap)
+    ap, gp, aw, gw, labels = create_windows_by_sensor(dataset, window_size, window_overlap)
+    # print(ap.shape, gp.shape, aw.shape, gw.shape, labels.shape)
+    train_ap, train_gp, train_aw, train_gw, train_labels, test_ap, test_gp, test_aw, test_gw, test_labels = split_sensors_train_test(
+        ap, gp, aw, gw, labels, random=False)
 
     # store the following variables to use for constructing the neural network
     # no of time periods within in one record (we've set it to 80 because each data point has an interval of 4 seconds)
     # and there are 3 sensors in this dataset
-    num_time_periods, num_sensors = train_accel_phone.shape[1:]
+    num_time_periods, num_sensors = train_ap.shape[1:]
     # the number of different activities we have - will be used to define the number of output nodes in our network
     num_classes = le.classes_.size
 
     # convert all data to float32 so TF can read it
-    train_accel_phone = train_accel_phone.astype('float32')
-    train_gyro_phone = train_gyro_phone.astype('float32')
-    train_accel_watch = train_accel_watch.astype('float32')
-    train_gyro_watch = train_gyro_watch.astype('float32')
+    train_ap = train_ap.astype('float32')
+    train_gp = train_gp.astype('float32')
+    train_aw = train_aw.astype('float32')
+    train_gw = train_gw.astype('float32')
     train_labels = train_labels.astype('float32')
-    test_accel_phone = test_accel_phone.astype('float32')
-    test_gyro_phone = test_gyro_phone.astype('float32')
-    test_accel_watch = test_accel_watch.astype('float32')
-    test_gyro_watch = test_gyro_watch.astype('float32')
+    test_ap = test_ap.astype('float32')
+    test_gp = test_gp.astype('float32')
+    test_aw = test_aw.astype('float32')
+    test_gw = test_gw.astype('float32')
     test_labels = test_labels.astype('float32')
 
     # perform one-hot encoding on the labels
@@ -330,7 +369,7 @@ def prepare_subject_data_by_sensor(data_path, window_size=80, window_overlap=40,
     train_y_hot = np_utils.to_categorical(train_labels, num_classes)
     test_y_hot = np_utils.to_categorical(test_labels, num_classes)
 
-    return train_accel_phone, train_gyro_phone, train_accel_watch, train_gyro_watch, train_y_hot, test_accel_phone, test_gyro_phone, test_accel_watch, test_gyro_watch, test_y_hot
+    return train_ap, train_gp, train_aw, train_gw, train_y_hot, test_ap, test_gp, test_aw, test_gw, test_y_hot
 
 
 def run_by_subject(iterations_per_subject=1):
@@ -350,7 +389,7 @@ def run_by_subject(iterations_per_subject=1):
         print("Subject " + subject_id)
         # output += "\n\nSubject" + subject_id
         train_x, train_y, test_x, test_y = prepare_subject_data(
-            'wisdm-merged/subject_full_merge/16' + subject_id + '_merged_data.txt')
+            'wisdm-merged/subject_full_merge/16' + subject_id + '_merged_data.txt', random_split=False)
 
         if train_y.shape[1] == 18:
             model = cnn_18_classes
@@ -410,15 +449,36 @@ def simple_run():
 
         # output += "\n\nRun: " + str(run_no)
         # epochs and batch size [1] B. Oluwalade, S. Neela, J. Wawira, T. Adejumo, and S. Purkayastha, “Human Activity Recognition using Deep Learning Models on Smartphones and Smartwatches Sensor Data,” pp. 645–650, 2021, doi: 10.5220/0010325906450650.
-        trained_model = models_spec.train_model(model, train_x, train_y, batch_size=32, epochs=25, verbose=1)
+        trained_model = models_spec.train_model(model, train_x, train_y, test_x, test_y, batch_size=32, epochs=25, verbose=1)
         accuracy = models_spec.evaluate_model(trained_model, test_x, test_y)
         print("Subject ID " + subject_id + ":", accuracy, "\n")
 
 
 def parallel_run():
-    train_accel_phone, train_gyro_phone, train_accel_watch, train_gyro_watch, train_y, test_accel_phone, test_gyro_phone, test_accel_watch, test_gyro_watch, test_y = prepare_subject_data_by_sensor(
-        'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt', validation_split=0.7)
-    print(train_accel_phone.shape, train_gyro_phone.shape, train_accel_watch.shape, train_gyro_watch.shape, train_y.shape, test_accel_phone.shape, test_gyro_phone.shape, test_accel_watch.shape, test_gyro_watch.shape, test_y.shape)
+    train_ap, train_gp, train_aw, train_gw, train_labels, test_ap, test_gp, test_accel_watch, test_gw, test_labels = prepare_subject_data_by_sensor(
+        'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt', validation_split=0.7,
+        random_split=False)
+
+    model = models_spec.parallel_test2(train_gp.shape[1:], 18)
+    trained_model = models_spec.train_model_by_sensor(model, train_ap, train_gp, train_aw, train_gw, train_labels, batch_size=32, epochs=25, verbose=1)
+    accuracy = models_spec.evaluate_model_by_sensor(model, test_ap, test_gp, test_accel_watch, test_gw, test_labels)
+
+    # train_x, train_y, test_x, test_y = prepare_subject_data(
+    #     'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt', validation_split=0.7)
+
+
+def test_data_prep():
+    train_ap, train_gp, train_aw, train_gw, train_labels, test_ap, test_gp, test_accel_watch, test_gw, test_labels = prepare_subject_data_by_sensor(
+        'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt', validation_split=0.7,
+        random_split=False)
+    print("bysensor:",train_ap.shape, train_gp.shape, train_aw.shape, train_gw.shape, train_labels.shape, test_ap.shape, test_gp.shape, test_accel_watch.shape, test_gw.shape, test_labels.shape)
+
+    train_x, train_y, test_x, test_y = prepare_subject_data(
+        'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt', validation_split=0.7,
+        random_split=False)
+    print("original:",train_x.shape, train_y.shape, test_x.shape, test_y.shape)
+
+
 
 
 pd.set_option('display.max_columns', None)
@@ -430,5 +490,5 @@ pd.set_option('display.max_colwidth', None)
 # run_by_subject()
 # run_all_data()
 # simple_run()
-# w_and_w_run()
 parallel_run()
+# test_data_prep()
