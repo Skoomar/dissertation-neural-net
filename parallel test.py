@@ -33,4 +33,3 @@ history = model.fit(,
                     # callbacks=callbacks_list,
                     # validation_data=(test_x, testy_y_hot),
                     verbose=verbose)
-return model

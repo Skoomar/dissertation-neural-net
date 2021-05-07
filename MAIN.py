@@ -94,18 +94,31 @@ def split_training_test(data, labels, validation_split, random):
         test_data = np.append(test_data, current_data[~split], axis=0)
         test_labels = np.append(test_labels, current_labels[~split])
         # else:
-            #     split = math.floor(len(labels) * validation_split)
-            #     train_data = np.append(train_data, current_data[:split], axis=0)
-            #     train_labels = np.append(train_labels, current_labels[:split])
-            #     test_data = np.append(test_data, current_data[split:], axis=0)
-            #     test_labels = np.append(test_labels, current_labels[split:])
-
-
+        #     split = math.floor(len(labels) * validation_split)
+        #     train_data = np.append(train_data, current_data[:split], axis=0)
+        #     train_labels = np.append(train_labels, current_labels[:split])
+        #     test_data = np.append(test_data, current_data[split:], axis=0)
+        #     test_labels = np.append(test_labels, current_labels[split:])
 
     return train_data, train_labels, test_data, test_labels
 
 
-def create_windows_and_labels(data, time_steps, step, label_name):
+def sensor_split_training_test(dataset, validation_split, random_split):
+    encoded_activity_ids = np.arange(18)
+    training = pd.DataFrame()
+    testing = pd.DataFrame()
+
+    for activity in encoded_activity_ids:
+        activity_subset = dataset[dataset['ActivityEncoded'] == activity].reset_index(drop=True)
+
+        split = np.random.rand(len(activity_subset)) < validation_split
+        training = training.append(activity_subset.loc[split])
+        testing = testing.append(activity_subset.loc[~split])
+
+    return training.reset_index(drop=True), testing.reset_index(drop=True)
+
+
+def create_windows_and_labels(data, time_steps, step):
     # features are signals on the x, y, and z axes for each accel and gyro of both phone and watch
     N_FEATURES = 12
 
@@ -126,7 +139,7 @@ def create_windows_and_labels(data, time_steps, step, label_name):
         zgw = data['z-axis_gyro_watch'].values[i: i + time_steps]
 
         # define this segment with the activity that occurs most in this segment
-        label = stats.mode(data[label_name][i: i + time_steps])[0][0]
+        label = stats.mode(data['ActivityEncoded'][i: i + time_steps])[0][0]
         windows.append([xap, yap, zap, xgp, ygp, zgp, xaw, yaw, zaw, xgw, ygw, zgw])
         labels.append(label)
 
@@ -135,6 +148,34 @@ def create_windows_and_labels(data, time_steps, step, label_name):
     labels = np.asarray(labels)
 
     return reshaped_segments, labels
+
+
+def create_sensor_window(data, time_steps, step, sensor_name, device_name):
+    N_FEATURES = 3
+    windows = []
+    for i in range(0, len(data) - time_steps, step):
+        x = data['x-axis_' + sensor_name + '_' + device_name].values[i: i + time_steps]
+        y = data['y-axis_' + sensor_name + '_' + device_name].values[i: i + time_steps]
+        z = data['z-axis_' + sensor_name + '_' + device_name].values[i: i + time_steps]
+        windows.append([x, y, z])
+    return np.asarray(windows, dtype=np.float32).reshape(-1, time_steps, N_FEATURES)
+
+
+def create_windows_by_sensor(data, time_steps, step):
+    # create windows for accelerometer and gyroscope of both phone and watch
+    ap = create_sensor_window(data, time_steps, step, 'accel', 'phone')
+    gp = create_sensor_window(data, time_steps, step, 'gyro', 'phone')
+    aw = create_sensor_window(data, time_steps, step, 'accel', 'watch')
+    gw = create_sensor_window(data, time_steps, step, 'gyro', 'watch')
+
+    # create corresponding labels for the above windows
+    labels = []
+    for i in range(0, len(data) - time_steps, step):
+        label = stats.mode(data['ActivityEncoded'][i: i + time_steps])[0][0]
+        labels.append(label)
+    labels = np.asarray(labels)
+
+    return ap, gp, aw, gw, labels
 
 
 def dct_windows(data, window_length=10):
@@ -188,7 +229,7 @@ def prepare_subject_data(data_path, window_size=80, window_overlap=40, validatio
     # steps to take from one segment to next - if same as TIME_PERIODS, then no overlap occurs between windows
     # STEP_DISTANCE = 40
     # use window_size and overlap instead of TIME_PERIODS and STEP_DISTANCE so we can change it when calling the function
-    windows, labels = create_windows_and_labels(dataset, window_size, window_overlap, ENCODED_LABEL)
+    windows, labels = create_windows_and_labels(dataset, window_size, window_overlap)
     # if perform_dct:
     # windows_dcted = dct_windows(windows).reshape(-1, window_size, 12)
 
@@ -220,7 +261,76 @@ def prepare_subject_data(data_path, window_size=80, window_overlap=40, validatio
     # dct_train_y_hot = np_utils.to_categorical(dct_train_y, num_classes)
     # dct_test_y_hot = np_utils.to_categorical(dct_test_y, num_classes)
 
-    return train_x, train_y_hot, test_x, test_y_hot#, dct_train_x, dct_train_y, dct_test_x, dct_test_y
+    return train_x, train_y_hot, test_x, test_y_hot  # , dct_train_x, dct_train_y, dct_test_x, dct_test_y
+
+
+def prepare_subject_data_by_sensor(data_path, window_size=80, window_overlap=40, validation_split=0.7,
+                                   random_split=True,
+                                   perform_dct=False):
+    """Get all data for the given subject, process it and split it into training and testing sets for the model"""
+    dataset = read_data(data_path)
+
+    # TODO: think putting a BatchNormalisation layer in the model might be better than this
+    # TODO: DO THE NORMALISATION AFTER IT'S SPLIT INTO TRAINING/TESTING - and need to normalise the testing set with whatever scale is made for the training
+    dataset['x-axis_accel_phone'] = feature_normalise(dataset['x-axis_accel_phone'])
+    dataset['y-axis_accel_phone'] = feature_normalise(dataset['y-axis_accel_phone'])
+    dataset['z-axis_accel_phone'] = feature_normalise(dataset['z-axis_accel_phone'])
+    dataset['x-axis_gyro_phone'] = feature_normalise(dataset['x-axis_gyro_phone'])
+    dataset['y-axis_gyro_phone'] = feature_normalise(dataset['y-axis_gyro_phone'])
+    dataset['z-axis_gyro_phone'] = feature_normalise(dataset['z-axis_gyro_phone'])
+    dataset['x-axis_accel_watch'] = feature_normalise(dataset['x-axis_accel_watch'])
+    dataset['y-axis_accel_watch'] = feature_normalise(dataset['y-axis_accel_watch'])
+    dataset['z-axis_accel_watch'] = feature_normalise(dataset['z-axis_accel_watch'])
+    dataset['x-axis_gyro_watch'] = feature_normalise(dataset['x-axis_gyro_watch'])
+    dataset['y-axis_gyro_watch'] = feature_normalise(dataset['y-axis_gyro_watch'])
+    dataset['z-axis_gyro_watch'] = feature_normalise(dataset['z-axis_gyro_watch'])
+
+    # encode the labels into numerical representations so the neural network can work with them
+    ENCODED_LABEL = 'ActivityEncoded'
+    # use LabelEncoder to convert from String to Integer
+    le = preprocessing.LabelEncoder()
+    # add the new encoded labels as a column in the dataset
+    dataset[ENCODED_LABEL] = le.fit_transform(dataset['activity'].values.ravel())
+
+    windows, labels = create_windows_and_labels(dataset, window_size, window_overlap)
+    windows = windows.reshape(-1, window_size, 12)
+    train_x, train_y, test_x, test_y = split_training_test(windows, labels, validation_split, random_split)
+    print(train_x.shape, train_y.shape, test_y.shape, test_y.shape)
+
+    train, test = sensor_split_training_test(dataset, validation_split, random_split)
+
+    train_accel_phone, train_gyro_phone, train_accel_watch, train_gyro_watch, train_labels = create_windows_by_sensor(
+        train, window_size,
+        window_overlap)
+    test_accel_phone, test_gyro_phone, test_accel_watch, test_gyro_watch, test_labels = create_windows_by_sensor(
+        test, window_size,
+        window_overlap)
+
+    # store the following variables to use for constructing the neural network
+    # no of time periods within in one record (we've set it to 80 because each data point has an interval of 4 seconds)
+    # and there are 3 sensors in this dataset
+    num_time_periods, num_sensors = train_accel_phone.shape[1:]
+    # the number of different activities we have - will be used to define the number of output nodes in our network
+    num_classes = le.classes_.size
+
+    # convert all data to float32 so TF can read it
+    train_accel_phone = train_accel_phone.astype('float32')
+    train_gyro_phone = train_gyro_phone.astype('float32')
+    train_accel_watch = train_accel_watch.astype('float32')
+    train_gyro_watch = train_gyro_watch.astype('float32')
+    train_labels = train_labels.astype('float32')
+    test_accel_phone = test_accel_phone.astype('float32')
+    test_gyro_phone = test_gyro_phone.astype('float32')
+    test_accel_watch = test_accel_watch.astype('float32')
+    test_gyro_watch = test_gyro_watch.astype('float32')
+    test_labels = test_labels.astype('float32')
+
+    # perform one-hot encoding on the labels
+    # TODO: try doing this one-hot encoding the way the other tutorial does so i don't have to import keras as well
+    train_y_hot = np_utils.to_categorical(train_labels, num_classes)
+    test_y_hot = np_utils.to_categorical(test_labels, num_classes)
+
+    return train_accel_phone, train_gyro_phone, train_accel_watch, train_gyro_watch, train_y_hot, test_accel_phone, test_gyro_phone, test_accel_watch, test_gyro_watch, test_y_hot
 
 
 def run_by_subject(iterations_per_subject=1):
@@ -280,8 +390,8 @@ def run_all_data(iterations=1):
 
 def simple_run():
     # model = models.wijekoon_wiratunga()
-    # model = models_spec.paper_cnn()
-    model = models_spec.basic_lstm()
+    model = models_spec.paper_cnn()
+    # model = models_spec.basic_lstm()
     for i in range(51):
         subject_id = str(i)
         if i < 10:
@@ -290,7 +400,8 @@ def simple_run():
         print("Subject " + subject_id)
         # output += "\n\nSubject" + subject_id
         train_x, train_y, test_x, test_y = prepare_subject_data(
-            'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/16' + subject_id + '_merged_data.txt', validation_split=0.7,
+            'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/16' + subject_id + '_merged_data.txt',
+            validation_split=0.7,
             random_split=True)
 
         if train_y.shape[1] != 18:
@@ -304,37 +415,10 @@ def simple_run():
         print("Subject ID " + subject_id + ":", accuracy, "\n")
 
 
-def w_and_w_run():
-    activity_ids = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'O', 'P', 'Q', 'R', 'S']
-    batch_size = 128
-    epochs = 10
-    dct_length = 60
-
-    ww = models_spec.paper_cnn()
-    cnn = models_spec.paper_cnn()
-    for i in range(51):
-        subject_id = str(i)
-        if i < 10:
-            subject_id = '0' + subject_id
-
-        print("Subject " + subject_id)
-        # output += "\n\nSubject" + subject_id
-        train_x, train_y, test_x, test_y, dct_train_x, dct_train_y, dct_test_x, dct_test_y = prepare_subject_data(
-            'wisdm-merged/subject_full_merge/16' + subject_id + '_merged_data.txt', validation_split=0.1,
-            random_split=True)
-
-
-        if train_y.shape[1] != 18:
-            print("Subject only has:", train_y.shape[1], "features")
-            continue
-
-        # epochs and batch size [1] B. Oluwalade, S. Neela, J. Wawira, T. Adejumo, and S. Purkayastha, “Human Activity Recognition using Deep Learning Models on Smartphones and Smartwatches Sensor Data,” pp. 645–650, 2021, doi: 10.5220/0010325906450650.
-        trained_ww = models_spec.train_model(ww, dct_train_x, dct_train_y, batch_size=32, epochs=25, verbose=1)
-        trained_cnn = models_spec.train_model(cnn, train_x, train_y, batch_size=32, epochs=25, verbose=1)
-        ww_acc = models_spec.evaluate_model(trained_ww, dct_test_x, dct_test_y)
-        print("Subject ID" + subject_id + ":", ww_acc, "\n")
-        cnn_acc = models_spec.evaluate_model(trained_cnn, test_x, test_y)
-        print("Subject ID " + subject_id + ":", cnn_acc, "\n")
+def parallel_run():
+    train_accel_phone, train_gyro_phone, train_accel_watch, train_gyro_watch, train_y, test_accel_phone, test_gyro_phone, test_accel_watch, test_gyro_watch, test_y = prepare_subject_data_by_sensor(
+        'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt', validation_split=0.7)
+    print(train_accel_phone.shape, train_gyro_phone.shape, train_accel_watch.shape, train_gyro_watch.shape, train_y.shape, test_accel_phone.shape, test_gyro_phone.shape, test_accel_watch.shape, test_gyro_watch.shape, test_y.shape)
 
 
 pd.set_option('display.max_columns', None)
@@ -345,5 +429,6 @@ pd.set_option('display.max_colwidth', None)
 
 # run_by_subject()
 # run_all_data()
-simple_run()
+# simple_run()
 # w_and_w_run()
+parallel_run()
