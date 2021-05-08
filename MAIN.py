@@ -7,6 +7,7 @@ from sklearn import preprocessing
 from sklearn.metrics import classification_report
 import models_spec
 import math
+import myDeepSense
 
 pd.options.display.float_format = '{:.1f}'.format
 plt.style.use('ggplot')
@@ -372,6 +373,18 @@ def prepare_subject_data_by_sensor(data_path, window_size=80, window_overlap=40,
     return train_ap, train_gp, train_aw, train_gw, train_y_hot, test_ap, test_gp, test_aw, test_gw, test_y_hot
 
 
+def test_data_prep():
+    train_ap, train_gp, train_aw, train_gw, train_labels, test_ap, test_gp, test_accel_watch, test_gw, test_labels = prepare_subject_data_by_sensor(
+        'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt', validation_split=0.7,
+        random_split=False)
+    print("bysensor:",train_ap.shape, train_gp.shape, train_aw.shape, train_gw.shape, train_labels.shape, test_ap.shape, test_gp.shape, test_accel_watch.shape, test_gw.shape, test_labels.shape)
+
+    train_x, train_y, test_x, test_y = prepare_subject_data(
+        'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt', validation_split=0.7,
+        random_split=False)
+    print("original:",train_x.shape, train_y.shape, test_x.shape, test_y.shape)
+
+
 def run_by_subject(iterations_per_subject=1):
     # make different models for different number of features
     # some subjects don't have data for certain classes so need to use different number of features for their model
@@ -462,22 +475,23 @@ def parallel_run():
     model = models_spec.parallel_test2(train_gp.shape[1:], 18)
     trained_model = models_spec.train_model_by_sensor(model, train_ap, train_gp, train_aw, train_gw, train_labels, batch_size=32, epochs=25, verbose=1)
     accuracy = models_spec.evaluate_model_by_sensor(model, test_ap, test_gp, test_accel_watch, test_gw, test_labels)
-
+    print(accuracy)
     # train_x, train_y, test_x, test_y = prepare_subject_data(
     #     'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt', validation_split=0.7)
 
 
-def test_data_prep():
+def deepSenseRun():
     train_ap, train_gp, train_aw, train_gw, train_labels, test_ap, test_gp, test_accel_watch, test_gw, test_labels = prepare_subject_data_by_sensor(
         'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt', validation_split=0.7,
         random_split=False)
-    print("bysensor:",train_ap.shape, train_gp.shape, train_aw.shape, train_gw.shape, train_labels.shape, test_ap.shape, test_gp.shape, test_accel_watch.shape, test_gw.shape, test_labels.shape)
 
-    train_x, train_y, test_x, test_y = prepare_subject_data(
-        'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt', validation_split=0.7,
-        random_split=False)
-    print("original:",train_x.shape, train_y.shape, test_x.shape, test_y.shape)
-
+    model = myDeepSense.uDeepSense(train_gp.shape[1:], 18)
+    trained_model = myDeepSense.train(model, train_ap, train_gp, train_aw, train_gw, train_labels,
+                                                      batch_size=32, epochs=25, verbose=1)
+    accuracy = myDeepSense.evaluate(model, test_ap, test_gp, test_accel_watch, test_gw, test_labels)
+    print(accuracy)
+    # train_x, train_y, test_x, test_y = prepare_subject_data(
+    #     'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt', validation_split=0.7)
 
 
 
@@ -490,5 +504,6 @@ pd.set_option('display.max_colwidth', None)
 # run_by_subject()
 # run_all_data()
 # simple_run()
-parallel_run()
+# parallel_run()
 # test_data_prep()
+deepSenseRun()
