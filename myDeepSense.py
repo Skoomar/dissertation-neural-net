@@ -2,6 +2,8 @@ import tensorflow as tf
 from tensorflow.keras import models, layers
 
 
+
+
 def individual_conv_layers(input_layer):
     num_filters = 64
     kernel_size1 = 18
@@ -9,47 +11,29 @@ def individual_conv_layers(input_layer):
     conv1 = layers.BatchNormalization()(conv1)
     conv1 = layers.Activation('relu')(conv1)
     conv1 = layers.Dropout(0.2)(conv1)
-    # accel_conv = layers.MaxPooling1D(pool_size=2)(accel_conv)
-    # conv1 = layers.Flatten()(conv1)
 
     kernel_size2 = 3
     conv2 = layers.Conv1D(num_filters, kernel_size2)(conv1)
     conv2 = layers.BatchNormalization()(conv2)
     conv2 = layers.Activation('relu')(conv2)
     conv2 = layers.Dropout(0.2)(conv2)
-    # conv2 = layers.Flatten()(conv2)
 
     conv3 = layers.Conv1D(num_filters, kernel_size2)(conv2)
     conv3 = layers.BatchNormalization()(conv3)
     conv3 = layers.Activation('relu')(conv3)
 
-    # out = layers.Flatten()(conv3)
     conv3_shape = conv3.get_shape()
     out = tf.reshape(conv3, [-1, conv3_shape[1], 1, conv3_shape[2]])
     return out
 
 
-def uDeepSense(input_shape=(80, 3), num_classes=18):
-
+# TODO: work out the right sizes for filter size, kernel size, stride etc from what Davide defined his values based on
+def u_deep_sense(input_shape=(80, 3), num_classes=18):
     ap = layers.Input(shape=input_shape)
     gp = layers.Input(shape=input_shape)
     aw = layers.Input(shape=input_shape)
     gw = layers.Input(shape=input_shape)
 
-    # accel_phone_conv = layers.Conv1D(filter_size, kernel_size)(ap)
-    # accel_phone_conv = layers.BatchNormalization()(accel_phone_conv)
-    # accel_phone_conv = layers.Activation('relu')(accel_phone_conv)
-    # accel_phone_conv = layers.Dropout(0.2)(accel_phone_conv)
-    # # accel_phone_conv = layers.MaxPooling1D(pool_size=2)(accel_phone_conv)
-    # accel_phone_conv = layers.Flatten()(accel_phone_conv)
-    #
-    # gyro_phone_conv = layers.Conv1D(filter_size, kernel_size)(gp)
-    # gyro_phone_conv = layers.BatchNormalization()(gyro_phone_conv)
-    # gyro_phone_conv = layers.Activation('relu')(gyro_phone_conv)
-    # gyro_phone_conv = layers.Dropout(0.2)(gyro_phone_conv)
-    # # gyro_phone_conv = layers.MaxPooling1D(pool_size=2)(gyro_phone_conv)
-    # gyro_phone_conv = layers.Flatten()(gyro_phone_conv)
-    #
     accel_phone_conv = individual_conv_layers(ap)
     gyro_phone_conv = individual_conv_layers(gp)
     accel_watch_conv = individual_conv_layers(aw)
@@ -57,7 +41,6 @@ def uDeepSense(input_shape=(80, 3), num_classes=18):
 
     individual_output = layers.concatenate([accel_phone_conv, gyro_phone_conv, accel_watch_conv, gyro_watch_conv], 2)
     individual_output = layers.Dropout(0.2)(individual_output)
-    print(individual_output.get_shape())
 
     merge_conv1 = layers.Conv2D(64, [2, 16], padding='same')(individual_output)
     merge_conv1 = layers.BatchNormalization()(merge_conv1)
@@ -74,10 +57,28 @@ def uDeepSense(input_shape=(80, 3), num_classes=18):
     merge_conv3 = layers.Activation('relu')(merge_conv3)
 
     merge_conv3_shape = merge_conv3.get_shape()
-    merge_output = tf.reshape(merge_conv3, [-1, merge_conv3_shape[1], merge_conv3_shape[2]*merge_conv3_shape[3]])
+    merge_output = tf.reshape(merge_conv3, [-1, merge_conv3_shape[1], merge_conv3_shape[2] * merge_conv3_shape[3]])
+    print(merge_conv3_shape)
     print("merge_output:", merge_output.get_shape())
 
-    output = layers.Dense(num_classes, activation='softmax')(merge_conv3)
+    gru_cell1 = layers.GRUCell(18)
+    # gru_cell1 = layers.Dropout(0.5)(gru_cell1)
+    gru_cell1 = tf.nn.RNNCellDropoutWrapper(gru_cell1, 0.5)
+
+    gru_cell2 = layers.GRUCell(18)
+    # gru_cell2 = layers.Dropout(0.5)(gru_cell2)
+    gru_cell2 = tf.nn.RNNCellDropoutWrapper(gru_cell2, 0.5)
+
+    batch_size = 64
+    rnn_cell = layers.StackedRNNCells([gru_cell1, gru_cell2])
+    init_state = rnn_cell.get_initial_state(merge_output, batch_size, tf.float32)
+
+    rnn_output, final_stateTuple = layers.RNN(rnn_cell)
+
+    sum_rnn_output = tf.reduce_sum(rnn_output, axis=1, keepdims=False)
+    # avg_rnn_output = sum_rnn_output / tf.tile()
+
+    output = layers.Dense(num_classes, activation='softmax')(sum_rnn_output)
 
     model = models.Model(inputs=[ap, gp, aw, gw], outputs=[output])
     model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
