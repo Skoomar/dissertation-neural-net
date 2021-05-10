@@ -28,7 +28,8 @@ def individual_conv_layers(input_layer):
 
 
 # TODO: work out the right sizes for filter size, kernel size, stride etc from what Davide defined his values based on
-def u_deep_sense(input_shape=(80, 3), num_classes=18):
+def u_deep_sense(input_shape=(80, 3), num_classes=18, batch_size=64):
+    length = input_shape[0]
     ap = layers.Input(shape=input_shape)
     gp = layers.Input(shape=input_shape)
     aw = layers.Input(shape=input_shape)
@@ -61,24 +62,25 @@ def u_deep_sense(input_shape=(80, 3), num_classes=18):
     print(merge_conv3_shape)
     print("merge_output:", merge_output.get_shape())
 
-    gru_cell1 = layers.GRUCell(18)
-    # gru_cell1 = layers.Dropout(0.5)(gru_cell1)
-    gru_cell1 = tf.nn.RNNCellDropoutWrapper(gru_cell1, 0.5)
+    # num_cells = 18
+    # gru_cell1 = layers.GRUCell(num_cells)
+    # gru_cell1 = tf.nn.RNNCellDropoutWrapper(gru_cell1, 0.5)
+    #
+    # gru_cell2 = layers.GRUCell(num_cells)
+    # gru_cell2 = tf.nn.RNNCellDropoutWrapper(gru_cell2, 0.5)
+    #
+    # rnn_cell = layers.StackedRNNCells([gru_cell1, gru_cell2])
+    # init_state = rnn_cell.get_initial_state(merge_output, batch_size, tf.float32)
+    # print("init_state:", init_state)
+    # rnn = layers.RNN(rnn_cell, return_state=True)
+    # rnn_output, final_state1, final_state2 = rnn(merge_output, initial_state=init_state)
+    # print("rnn_out:", rnn_output)
+    # sum_rnn_output = tf.reduce_sum(rnn_output, axis=0, keepdims=False)
+    # print("sum_rnn:",sum_rnn_output)
+    # # avg_rnn_output = sum_rnn_output / tf.tile(length, [1, num_cells])
+    gru = layers.GRU(36, dropout=0.5)(merge_output)
 
-    gru_cell2 = layers.GRUCell(18)
-    # gru_cell2 = layers.Dropout(0.5)(gru_cell2)
-    gru_cell2 = tf.nn.RNNCellDropoutWrapper(gru_cell2, 0.5)
-
-    batch_size = 64
-    rnn_cell = layers.StackedRNNCells([gru_cell1, gru_cell2])
-    init_state = rnn_cell.get_initial_state(merge_output, batch_size, tf.float32)
-
-    rnn_output, final_stateTuple = layers.RNN(rnn_cell)
-
-    sum_rnn_output = tf.reduce_sum(rnn_output, axis=1, keepdims=False)
-    # avg_rnn_output = sum_rnn_output / tf.tile()
-
-    output = layers.Dense(num_classes, activation='softmax')(sum_rnn_output)
+    output = layers.Dense(num_classes, activation='softmax')(gru)
 
     model = models.Model(inputs=[ap, gp, aw, gw], outputs=[output])
     model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])

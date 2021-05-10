@@ -485,9 +485,11 @@ def deepSenseRun():
         'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt', validation_split=0.7,
         random_split=False)
 
-    model = myDeepSense.u_deep_sense(train_gp.shape[1:], 18)
+    batch_size = 32
+    model = myDeepSense.u_deep_sense(train_gp.shape[1:], 18, batch_size=batch_size)
+    print("Training")
     trained_model = myDeepSense.train(model, train_ap, train_gp, train_aw, train_gw, train_labels,
-                                                      batch_size=32, epochs=25, verbose=1)
+                                                      batch_size=batch_size, epochs=25, verbose=1)
     accuracy = myDeepSense.evaluate(model, test_ap, test_gp, test_accel_watch, test_gw, test_labels)
     print(accuracy)
     # train_x, train_y, test_x, test_y = prepare_subject_data(
