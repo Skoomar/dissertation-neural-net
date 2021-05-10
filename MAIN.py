@@ -1,6 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import tensorflow as tf
+from tensorflow.keras import models, layers
 from keras.utils import np_utils
 from scipy import stats, fftpack
 from sklearn import preprocessing
@@ -239,8 +241,59 @@ def dct_windows(data, window_length=10):
     return np.asarray(dct_data)
 
 
-def prepare_subject_data(data_path, window_size=80, window_overlap=40, validation_split=0.7, random_split=True,
-                         perform_dct=False):
+def prepare_subject_data(data_path, window_size=80, window_overlap=40):
+    """Get all data for the given subject, process it and split it into training and testing sets for the model"""
+    dataset = read_data(data_path)
+
+    # TODO: think putting a BatchNormalisation layer in the model might be better than this
+    # TODO: DO THE NORMALISATION AFTER IT'S SPLIT INTO TRAINING/TESTING - and need to normalise the testing set with whatever scale is made for the training
+    dataset['x-axis_accel_phone'] = feature_normalise(dataset['x-axis_accel_phone'])
+    dataset['y-axis_accel_phone'] = feature_normalise(dataset['y-axis_accel_phone'])
+    dataset['z-axis_accel_phone'] = feature_normalise(dataset['z-axis_accel_phone'])
+    dataset['x-axis_gyro_phone'] = feature_normalise(dataset['x-axis_gyro_phone'])
+    dataset['y-axis_gyro_phone'] = feature_normalise(dataset['y-axis_gyro_phone'])
+    dataset['z-axis_gyro_phone'] = feature_normalise(dataset['z-axis_gyro_phone'])
+    dataset['x-axis_accel_watch'] = feature_normalise(dataset['x-axis_accel_watch'])
+    dataset['y-axis_accel_watch'] = feature_normalise(dataset['y-axis_accel_watch'])
+    dataset['z-axis_accel_watch'] = feature_normalise(dataset['z-axis_accel_watch'])
+    dataset['x-axis_gyro_watch'] = feature_normalise(dataset['x-axis_gyro_watch'])
+    dataset['y-axis_gyro_watch'] = feature_normalise(dataset['y-axis_gyro_watch'])
+    dataset['z-axis_gyro_watch'] = feature_normalise(dataset['z-axis_gyro_watch'])
+
+    # encode the labels into numerical representations so the neural network can work with them
+    ENCODED_LABEL = 'ActivityEncoded'
+    # use LabelEncoder to convert from String to Integer
+    le = preprocessing.LabelEncoder()
+    # add the new encoded labels as a column in the dataset
+    dataset[ENCODED_LABEL] = le.fit_transform(dataset['activity'].values.ravel())
+
+    # number of steps within one time segment
+    # using 8 second window size
+    # TIME_PERIODS = 80
+    # steps to take from one segment to next - if same as TIME_PERIODS, then no overlap occurs between windows
+    # STEP_DISTANCE = 40
+    # use window_size and overlap instead of TIME_PERIODS and STEP_DISTANCE so we can change it when calling the function
+    windows, labels = create_windows_and_labels(dataset, window_size, window_overlap)
+
+    num_classes = le.classes_.size
+
+    # convert all data to float32 so TF can read it
+    x = windows.astype('float32')
+    y = labels.astype('float32')
+    # dct_train_x = dct_train_x.astype('float32')
+    # dct_train_y = dct_train_y.astype('float32')
+    # dct_test_x = dct_test_x.astype('float32')
+    # dct_test_y = dct_test_y.astype('float32')
+
+    # perform one-hot encoding on the labels
+    # TODO: try doing this one-hot encoding the way the other tutorial does so i don't have to import keras as well
+    y_hot = np_utils.to_categorical(y, num_classes)
+
+    return x, y_hot
+
+
+def prepare_subject_data_train_test(data_path, window_size=80, window_overlap=40, validation_split=0.7, random_split=True,
+                                    perform_dct=False):
     """Get all data for the given subject, process it and split it into training and testing sets for the model"""
     dataset = read_data(data_path)
 
@@ -308,10 +361,11 @@ def prepare_subject_data(data_path, window_size=80, window_overlap=40, validatio
     return train_x, train_y_hot, test_x, test_y_hot  # , dct_train_x, dct_train_y, dct_test_x, dct_test_y
 
 
-def prepare_subject_data_by_sensor(data_path, window_size=80, window_overlap=40, validation_split=0.7,
-                                   random_split=True,
-                                   perform_dct=False):
-    """Get all data for the given subject, process it and split it into training and testing sets for the model"""
+def prepare_subject_data_by_sensor_train_test(data_path, window_size=80, window_overlap=40, validation_split=0.7,
+                                              random_split=True,
+                                              perform_dct=False):
+    """Same as prepare_subject_data but splits the features from each sensor, giving the x,y,z axes of each accelerometer
+    and gyroscope from both phone and watch in separate arrays"""
     dataset = read_data(data_path)
 
     # TODO: think putting a BatchNormalisation layer in the model might be better than this
@@ -373,13 +427,65 @@ def prepare_subject_data_by_sensor(data_path, window_size=80, window_overlap=40,
     return train_ap, train_gp, train_aw, train_gw, train_y_hot, test_ap, test_gp, test_aw, test_gw, test_y_hot
 
 
+def prepare_subject_data_by_sensor(data_path, window_size=80, window_overlap=40):
+    """Same as prepare_subject_data but splits the features from each sensor, giving the x,y,z axes of each accelerometer
+    and gyroscope from both phone and watch in separate arrays"""
+    dataset = read_data(data_path)
+
+    # TODO: think putting a BatchNormalisation layer in the model might be better than this
+    # TODO: DO THE NORMALISATION AFTER IT'S SPLIT INTO TRAINING/TESTING - and need to normalise the testing set with whatever scale is made for the training
+    dataset['x-axis_accel_phone'] = feature_normalise(dataset['x-axis_accel_phone'])
+    dataset['y-axis_accel_phone'] = feature_normalise(dataset['y-axis_accel_phone'])
+    dataset['z-axis_accel_phone'] = feature_normalise(dataset['z-axis_accel_phone'])
+    dataset['x-axis_gyro_phone'] = feature_normalise(dataset['x-axis_gyro_phone'])
+    dataset['y-axis_gyro_phone'] = feature_normalise(dataset['y-axis_gyro_phone'])
+    dataset['z-axis_gyro_phone'] = feature_normalise(dataset['z-axis_gyro_phone'])
+    dataset['x-axis_accel_watch'] = feature_normalise(dataset['x-axis_accel_watch'])
+    dataset['y-axis_accel_watch'] = feature_normalise(dataset['y-axis_accel_watch'])
+    dataset['z-axis_accel_watch'] = feature_normalise(dataset['z-axis_accel_watch'])
+    dataset['x-axis_gyro_watch'] = feature_normalise(dataset['x-axis_gyro_watch'])
+    dataset['y-axis_gyro_watch'] = feature_normalise(dataset['y-axis_gyro_watch'])
+    dataset['z-axis_gyro_watch'] = feature_normalise(dataset['z-axis_gyro_watch'])
+
+    # encode the labels into numerical representations so the neural network can work with them
+    ENCODED_LABEL = 'ActivityEncoded'
+    # use LabelEncoder to convert from String to Integer
+    le = preprocessing.LabelEncoder()
+    # add the new encoded labels as a column in the dataset
+    dataset[ENCODED_LABEL] = le.fit_transform(dataset['activity'].values.ravel())
+
+    ##### original method testing ####
+    # windows, labels = create_windows_and_labels(dataset, window_size, window_overlap)
+    # train_x, train_y, test_x, test_y = split_train_test(windows, labels, validation_split, random_split)
+    ##################################
+
+    ap, gp, aw, gw, labels = create_windows_by_sensor(dataset, window_size, window_overlap)
+    # print(ap.shape, gp.shape, aw.shape, gw.shape, labels.shape)
+
+    # the number of different activities we have - will be used to define the number of output nodes in our network
+    num_classes = le.classes_.size
+
+    # convert all data to float32 so TF can read it
+    ap = ap.astype('float32')
+    gp = gp.astype('float32')
+    aw = aw.astype('float32')
+    gw = gw.astype('float32')
+    labels = labels.astype('float32')
+
+    # perform one-hot encoding on the labels
+    # TODO: try doing this one-hot encoding the way the other tutorial does so i don't have to import keras as well
+    y_hot = np_utils.to_categorical(labels, num_classes)
+
+    return ap, gp, aw, gw, y_hot
+
+
 def test_data_prep():
-    train_ap, train_gp, train_aw, train_gw, train_labels, test_ap, test_gp, test_accel_watch, test_gw, test_labels = prepare_subject_data_by_sensor(
+    train_ap, train_gp, train_aw, train_gw, train_labels, test_ap, test_gp, test_accel_watch, test_gw, test_labels = prepare_subject_data_by_sensor_train_test(
         'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt', validation_split=0.7,
         random_split=False)
     print("bysensor:",train_ap.shape, train_gp.shape, train_aw.shape, train_gw.shape, train_labels.shape, test_ap.shape, test_gp.shape, test_accel_watch.shape, test_gw.shape, test_labels.shape)
 
-    train_x, train_y, test_x, test_y = prepare_subject_data(
+    train_x, train_y, test_x, test_y = prepare_subject_data_train_test(
         'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt', validation_split=0.7,
         random_split=False)
     print("original:",train_x.shape, train_y.shape, test_x.shape, test_y.shape)
@@ -401,7 +507,7 @@ def run_by_subject(iterations_per_subject=1):
 
         print("Subject " + subject_id)
         # output += "\n\nSubject" + subject_id
-        train_x, train_y, test_x, test_y = prepare_subject_data(
+        train_x, train_y, test_x, test_y = prepare_subject_data_train_test(
             'wisdm-merged/subject_full_merge/16' + subject_id + '_merged_data.txt', random_split=False)
 
         if train_y.shape[1] == 18:
@@ -432,7 +538,7 @@ def run_by_subject(iterations_per_subject=1):
 
 
 def run_all_data(iterations=1):
-    train_x, train_y, test_x, test_y = prepare_subject_data('wisdm-merged/complete_merge.txt')
+    train_x, train_y, test_x, test_y = prepare_subject_data_train_test('wisdm-merged/complete_merge.txt')
     model = models_spec.basic_mlp()
     for run_no in range(1, iterations + 1):
         trained_model = models_spec.train_model(model, train_x, train_y, verbose=1)
@@ -451,7 +557,7 @@ def simple_run():
 
         print("Subject " + subject_id)
         # output += "\n\nSubject" + subject_id
-        train_x, train_y, test_x, test_y = prepare_subject_data(
+        train_x, train_y, test_x, test_y = prepare_subject_data_train_test(
             'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/16' + subject_id + '_merged_data.txt',
             validation_split=0.7,
             random_split=True)
@@ -467,8 +573,20 @@ def simple_run():
         print("Subject ID " + subject_id + ":", accuracy, "\n")
 
 
+def train_one_test_two():
+    x, y = prepare_subject_data('C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt')
+    x2, y2 = prepare_subject_data('C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1601_merged_data.txt')
+
+    model = models_spec.paper_cnn()
+    print("Training")
+    trained_model = models_spec.train_model(model, x, y, batch_size=32, epochs=25, verbose=1)
+    # print(trained_model(include_top=False))
+    accuracy = models_spec.evaluate_model(model, x2, y2)
+    print("Accuracy:", accuracy)
+
+
 def parallel_run():
-    train_ap, train_gp, train_aw, train_gw, train_labels, test_ap, test_gp, test_accel_watch, test_gw, test_labels = prepare_subject_data_by_sensor(
+    train_ap, train_gp, train_aw, train_gw, train_labels, test_ap, test_gp, test_accel_watch, test_gw, test_labels = prepare_subject_data_by_sensor_train_test(
         'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt', validation_split=0.7,
         random_split=False)
 
@@ -481,20 +599,42 @@ def parallel_run():
 
 
 def deepSenseRun():
-    train_ap, train_gp, train_aw, train_gw, train_labels, test_ap, test_gp, test_accel_watch, test_gw, test_labels = prepare_subject_data_by_sensor(
+    train_ap, train_gp, train_aw, train_gw, train_labels, test_ap, test_gp, test_aw, test_gw, test_labels = prepare_subject_data_by_sensor_train_test(
         'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt', validation_split=0.7,
         random_split=False)
-
+    print("1:",train_ap.shape, train_gp.shape, train_aw.shape, train_gw.shape, train_labels.shape, test_ap.shape, test_gp.shape, test_aw.shape, test_gw.shape, test_labels.shape)
+    ap2,gp2,aw2,gw2,labels2 = prepare_subject_data_by_sensor('C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1601_merged_data.txt')
+    print("2:",ap2.shape,gp2.shape,aw2.shape,gw2.shape,labels2.shape)
     batch_size = 32
     model = myDeepSense.u_deep_sense(train_gp.shape[1:], 18, batch_size=batch_size)
     print("Training")
     trained_model = myDeepSense.train(model, train_ap, train_gp, train_aw, train_gw, train_labels,
                                                       batch_size=batch_size, epochs=25, verbose=1)
-    accuracy = myDeepSense.evaluate(model, test_ap, test_gp, test_accel_watch, test_gw, test_labels)
-    print(accuracy)
-    # train_x, train_y, test_x, test_y = prepare_subject_data(
-    #     'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt', validation_split=0.7)
+    model.save('saved_models/uDeepSense')
 
+    # print(trained_model(include_top=False))
+    accuracy = myDeepSense.evaluate(model, ap2, gp2, aw2, gw2, labels2)
+    print("Accuracy:", accuracy)
+
+
+def transfer_learn():
+    train_ap, train_gp, train_aw, train_gw, train_labels, test_ap, test_gp, test_aw, test_gw, test_labels = prepare_subject_data_by_sensor_train_test('C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1601_merged_data.txt')
+    original_model = tf.keras.models.load_model('saved_models/uDeepSense')
+    print(original_model.summary())
+    print(myDeepSense.evaluate(original_model, train_ap, train_gp, train_aw, train_gw, train_labels))
+
+    for i in range(len(original_model.layers) - 2):
+        original_model.layers[i].trainable = False
+
+    transfer_layers = original_model.layers[-2].output
+    transfer_layers = layers.Dense(36)(transfer_layers)
+    transfer_layers = layers.Dense(72)(transfer_layers)
+    transfer_layers = layers.Dense(18, activation='softmax')(transfer_layers)
+    new_model = models.Model(inputs=original_model.input, outputs=transfer_layers)
+    new_model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+    trained_model = myDeepSense.train(new_model, train_ap, train_gp, train_aw, train_gw, train_labels, batch_size=32, epochs=25, verbose=1)
+    print("Accuracy:", myDeepSense.evaluate(trained_model, test_ap, test_gp, test_aw, test_gw, test_labels))
 
 
 pd.set_option('display.max_columns', None)
@@ -508,4 +648,6 @@ pd.set_option('display.max_colwidth', None)
 # simple_run()
 # parallel_run()
 # test_data_prep()
-deepSenseRun()
+# deepSenseRun()
+# train_one_test_two()
+transfer_learn()

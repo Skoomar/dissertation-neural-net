@@ -78,7 +78,9 @@ def u_deep_sense(input_shape=(80, 3), num_classes=18, batch_size=64):
     # sum_rnn_output = tf.reduce_sum(rnn_output, axis=0, keepdims=False)
     # print("sum_rnn:",sum_rnn_output)
     # # avg_rnn_output = sum_rnn_output / tf.tile(length, [1, num_cells])
-    gru = layers.GRU(36, dropout=0.5)(merge_output)
+
+    # gru = layers.GRU(18, batch_input_shape=(batch_size, input_shape[0], 18), dropout=0.5)(merge_output)
+    gru = layers.GRU(18, dropout=0.5)(merge_output)
 
     output = layers.Dense(num_classes, activation='softmax')(gru)
 
