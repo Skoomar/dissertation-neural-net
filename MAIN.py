@@ -5,13 +5,16 @@ import tensorflow as tf
 from tensorflow.keras import models, layers
 import tensorflow_addons as tfa
 from keras.utils import np_utils
-from scipy import stats, fftpack
+from scipy import stats
 from sklearn import preprocessing
-from sklearn.metrics import classification_report
-import models_spec
-import math
-import myDeepSense
+from sklearn.metrics import f1_score
 import os
+import math
+
+import preprocess
+import models_spec
+import myDeepSense
+import evaluation
 
 # stops cudnn giving an error when it tries to use too much memory on the GPU while training RNN layers
 gpu_devices = tf.config.experimental.list_physical_devices("GPU")
@@ -22,28 +25,9 @@ pd.options.display.float_format = '{:.1f}'.format
 plt.style.use('ggplot')
 
 
-def read_data(file_path):
-    # Only use these if putting the original (non-merged) data
-    # column_names = ['user-id', 'activity', 'timestamp',
-    #                 'x-axis_accel_phone', 'y-axis_accel_phone', 'z-axis_accel_phone',
-    #                 'x-axis_gyro_phone', 'y-axis_gyro_phone', 'z-axis_gyro_phone',
-    #                 'x-axis_accel_watch', 'y-axis_accel_watch', 'z-axis_accel_watch',
-    #                 'x-axis_gyro_watch', 'y-axis_gyro_watch', 'z-axis_gyro_watch']
-
-    # no need for header & column_names unless you're using the original data
-    data = pd.read_csv(file_path
-                       # header=None,
-                       # names=column_names
-                       )
-
-    data.dropna(axis=0, how='any', inplace=True)
-    return data
 
 
-def feature_normalise(dataset):
-    mu = np.mean(dataset, axis=0)
-    sigma = np.std(dataset, axis=0)
-    return (dataset - mu) / sigma
+
 
 
 def plot_axis(ax, x, y, title):
@@ -77,395 +61,43 @@ def plot_activity(activity, data):
     plt.show()
 
 
-def create_windows_and_labels(data, time_steps, step):
-    # features are signals on the x, y, and z axes for each accel and gyro of both phone and watch
-    N_FEATURES = 12
 
-    windows = []
-    labels = []
-    for i in range(0, len(data) - time_steps, step):
-        xap = data['x-axis_accel_phone'].values[i: i + time_steps]
-        yap = data['y-axis_accel_phone'].values[i: i + time_steps]
-        zap = data['z-axis_accel_phone'].values[i: i + time_steps]
-        xgp = data['x-axis_gyro_phone'].values[i: i + time_steps]
-        ygp = data['y-axis_gyro_phone'].values[i: i + time_steps]
-        zgp = data['z-axis_gyro_phone'].values[i: i + time_steps]
-        xaw = data['x-axis_accel_watch'].values[i: i + time_steps]
-        yaw = data['y-axis_accel_watch'].values[i: i + time_steps]
-        zaw = data['z-axis_accel_watch'].values[i: i + time_steps]
-        xgw = data['x-axis_gyro_watch'].values[i: i + time_steps]
-        ygw = data['y-axis_gyro_watch'].values[i: i + time_steps]
-        zgw = data['z-axis_gyro_watch'].values[i: i + time_steps]
 
-        # define this segment with the activity that occurs most in this segment
-        label = stats.mode(data['ActivityEncoded'][i: i + time_steps])[0][0]
-        windows.append([xap, yap, zap, xgp, ygp, zgp, xaw, yaw, zaw, xgw, ygw, zgw])
-        labels.append(label)
 
-    # bring windows into a better shape
-    reshaped_segments = np.asarray(windows, dtype=np.float32).reshape(-1, time_steps, N_FEATURES)
-    labels = np.asarray(labels)
 
-    return reshaped_segments, labels
+def undo_one_hot_encoding(encoded):
+    non_hot = np.array([], dtype=np.int)
+    for i in range(len(encoded)):
+        non_hot = np.append(non_hot, int(np.where(encoded[i] == 1)[0]))
+    return non_hot
 
 
-def create_sensor_window(data, time_steps, step, sensor_name, device_name):
-    N_FEATURES = 3
-    windows = []
-    for i in range(0, len(data) - time_steps, step):
-        x = data['x-axis_' + sensor_name + '_' + device_name].values[i: i + time_steps]
-        y = data['y-axis_' + sensor_name + '_' + device_name].values[i: i + time_steps]
-        z = data['z-axis_' + sensor_name + '_' + device_name].values[i: i + time_steps]
-        windows.append([x, y, z])
-    return np.asarray(windows, dtype=np.float32).reshape(-1, time_steps, N_FEATURES)
+def decode_labels(encoded_y, label_encoder):
+    """Reverse the one-hot encoding and numerical encoding of the original alphabetical identifiers for each activity
+        class
 
+    Parameters:
+        encoded_y (numpy array): array of labels in shape (x, 18) as we have 18 classes
+        label_encoder (scikit-learn LabelEncoder): the object that was used to encode this particular set of classes
+                                                    during preprocessing
 
-def create_windows_by_sensor(data, time_steps, step):
-    # create windows for accelerometer and gyroscope of both phone and watch
-    accel_phone = create_sensor_window(data, time_steps, step, 'accel', 'phone')
-    gyro_phone = create_sensor_window(data, time_steps, step, 'gyro', 'phone')
-    accel_watch = create_sensor_window(data, time_steps, step, 'accel', 'watch')
-    gyro_watch = create_sensor_window(data, time_steps, step, 'gyro', 'watch')
+    Returns:
+            decoded_y (numpy array): array of values
+    """
 
-    # create corresponding labels for the above windows
-    labels = []
-    for i in range(0, len(data) - time_steps, step):
-        label = stats.mode(data['ActivityEncoded'][i: i + time_steps])[0][0]
-        labels.append(label)
-    labels = np.asarray(labels)
+    # if it's one-hot encoded then reverse it to get numerical identifiers for the target label
+    if len(encoded_y.shape) == 2:
+        non_hot_y = undo_one_hot_encoding(encoded_y)
+    elif len(encoded_y.shape > 2):
+        raise ValueError('Array of labels should only have up to 2 dimensions')
 
-    return accel_phone, gyro_phone, accel_watch, gyro_watch, labels
+    # decode the numerical identifiers to the original alphabetical identifiers
+    decoded_y = label_encoder.inverse_transform(non_hot_y)
+    return decoded_y
 
 
-# def dct_windows(data, window_length=10):
-#     """Applies Discrete Cosine Transform to each axis every 1 second (by default) of the given data"""
-#     # features are signals on the x, y, and z axes for each accel and gyro of both phone and watch
-#     N_FEATURES = 12
-#     dct_data = []
-#     for window in data:
-#         dct_window = []
-#         for axis in range(N_FEATURES):
-#             dct_axis = np.array([])
-#             for i in range(0, window.shape[1], window_length):
-#                 split_axis = window[axis][i:i + window_length]
-#                 dct_split_axis = np.abs(fftpack.dct(split_axis, norm='ortho'))
-#                 dct_axis = np.append(dct_axis, dct_split_axis)
-#             dct_window.append(dct_axis)
-#         dct_data.append(dct_window)
-#     return np.asarray(dct_data)
 
-
-# split dataset so there is an appropriate amount of records for EACH activity in the training and test sets
-# avoids problem of e.g. some activities having 5 records in training and only 1 in test while others have 2 in training
-# and 4 in test
-def split_train_test(data, labels, validation_split=0.7, random=True):
-    encoded_activity_ids = np.arange(18)
-    # train_data = np.empty((0, data.shape[1], data.shape[2]))
-    train_data = np.empty((0, *data.shape[1:]))
-    train_labels = np.empty((0))
-    test_data = np.empty((0, data.shape[1], data.shape[2]))
-    test_labels = np.empty((0))
-
-    # TODO: change it to work based on the segments not individual things
-    # TODO: i think i've already done the above todo but check anyway at point
-    # find segments corresponding to each activity label and split them 70:30
-    for a_id in encoded_activity_ids:
-        matching_indexes = np.where(labels == a_id)[0]
-        current_data = data[matching_indexes]
-        current_labels = labels[matching_indexes]
-
-        if random:
-            # calculate a new random split for every activity label
-            # TODO: try seeing what putting the same split for every label does to results
-            split = np.random.rand(len(matching_indexes)) < validation_split
-            # axis set to 0 to stop it flattening the data when it appends
-            train_data = np.append(train_data, current_data[split], axis=0)
-            train_labels = np.append(train_labels, current_labels[split])
-            test_data = np.append(test_data, current_data[~split], axis=0)
-            test_labels = np.append(test_labels, current_labels[~split])
-        else:
-            split = math.floor(len(matching_indexes) * validation_split)
-            train_data = np.append(train_data, current_data[:split], axis=0)
-            train_labels = np.append(train_labels, current_labels[:split])
-            test_data = np.append(test_data, current_data[split:], axis=0)
-            test_labels = np.append(test_labels, current_labels[split:])
-
-    return train_data, train_labels, test_data, test_labels
-
-
-def split_sensors_train_test(accel_phone, gyro_phone, accel_watch, gyro_watch, labels, validation_split=0.7,
-                             random=True):
-    train_ap = np.empty((0, *accel_phone.shape[1:]))
-    train_gp = np.empty((0, *gyro_phone.shape[1:]))
-    train_aw = np.empty((0, *accel_watch.shape[1:]))
-    train_gw = np.empty((0, *gyro_watch.shape[1:]))
-    train_labels = np.empty((0))
-    test_ap = np.empty((0, *accel_phone.shape[1:]))
-    test_gp = np.empty((0, *gyro_phone.shape[1:]))
-    test_aw = np.empty((0, *accel_watch.shape[1:]))
-    test_gw = np.empty((0, *gyro_watch.shape[1:]))
-    test_labels = np.empty((0))
-
-    encoded_activity_ids = np.arange(18)
-    for activity in encoded_activity_ids:
-        matching_indexes = np.where(labels == activity)[0]
-        current_ap = accel_phone[matching_indexes]
-        current_gp = gyro_phone[matching_indexes]
-        current_aw = accel_watch[matching_indexes]
-        current_gw = gyro_watch[matching_indexes]
-        current_labels = labels[matching_indexes]
-
-        if random:
-            # calculate a new random split for every activity label
-            # TODO: try seeing what putting the same split for every label does to results
-            split = np.random.rand(len(matching_indexes)) < validation_split
-            # axis set to 0 to stop it flattening the data when it appends
-            train_ap = np.append(train_ap, current_ap[split], axis=0)
-            train_gp = np.append(train_gp, current_gp[split], axis=0)
-            train_aw = np.append(train_aw, current_aw[split], axis=0)
-            train_gw = np.append(train_gw, current_gw[split], axis=0)
-            train_labels = np.append(train_labels, current_labels[split])
-
-            test_ap = np.append(test_ap, current_ap[~split], axis=0)
-            test_gp = np.append(test_gp, current_gp[~split], axis=0)
-            test_aw = np.append(test_aw, current_aw[~split], axis=0)
-            test_gw = np.append(test_gw, current_gw[~split], axis=0)
-            test_labels = np.append(test_labels, current_labels[~split])
-        else:
-            split = math.floor(len(matching_indexes) * validation_split)
-
-            train_ap = np.append(train_ap, current_ap[:split], axis=0)
-            train_gp = np.append(train_gp, current_gp[:split], axis=0)
-            train_aw = np.append(train_aw, current_aw[:split], axis=0)
-            train_gw = np.append(train_gw, current_gw[:split], axis=0)
-            train_labels = np.append(train_labels, current_labels[:split])
-
-            test_ap = np.append(test_ap, current_ap[split:], axis=0)
-            test_gp = np.append(test_gp, current_gp[split:], axis=0)
-            test_aw = np.append(test_aw, current_aw[split:], axis=0)
-            test_gw = np.append(test_gw, current_gw[split:], axis=0)
-            test_labels = np.append(test_labels, current_labels[split:])
-    return train_ap, train_gp, train_aw, train_gw, train_labels, test_ap, test_gp, test_aw, test_gw, test_labels
-
-
-def normalise_and_encode_activities(data):
-    # TODO: maybe DO THE NORMALISATION AFTER IT'S SPLIT INTO TRAINING/TESTING -
-    #  and need to normalise the testing set with whatever scale is made for the training
-    data['x-axis_accel_phone'] = feature_normalise(data['x-axis_accel_phone'])
-    data['y-axis_accel_phone'] = feature_normalise(data['y-axis_accel_phone'])
-    data['z-axis_accel_phone'] = feature_normalise(data['z-axis_accel_phone'])
-    data['x-axis_gyro_phone'] = feature_normalise(data['x-axis_gyro_phone'])
-    data['y-axis_gyro_phone'] = feature_normalise(data['y-axis_gyro_phone'])
-    data['z-axis_gyro_phone'] = feature_normalise(data['z-axis_gyro_phone'])
-    data['x-axis_accel_watch'] = feature_normalise(data['x-axis_accel_watch'])
-    data['y-axis_accel_watch'] = feature_normalise(data['y-axis_accel_watch'])
-    data['z-axis_accel_watch'] = feature_normalise(data['z-axis_accel_watch'])
-    data['x-axis_gyro_watch'] = feature_normalise(data['x-axis_gyro_watch'])
-    data['y-axis_gyro_watch'] = feature_normalise(data['y-axis_gyro_watch'])
-    data['z-axis_gyro_watch'] = feature_normalise(data['z-axis_gyro_watch'])
-
-    # encode the labels into numerical representations so the neural network can work with them
-    ENCODED_LABEL = 'ActivityEncoded'
-    # use LabelEncoder to convert from String to Integer
-    le = preprocessing.LabelEncoder()
-    # add the new encoded labels as a column in the dataset
-    data[ENCODED_LABEL] = le.fit_transform(data['activity'].values.ravel())
-    return data, le.classes_.size
-
-
-def prepare_subject_data(data_path, window_size=80, window_overlap=40):
-    """Get all data for the given subject, process it and split it into training and testing sets for the model"""
-    dataset = read_data(data_path)
-
-    dataset, num_classes = normalise_and_encode_activities(dataset)
-
-    # number of steps within one time segment
-    # using 8 second window size
-    # TIME_PERIODS = 80
-    # steps to take from one segment to next - if same as TIME_PERIODS, then no overlap occurs between windows
-    # STEP_DISTANCE = 40
-    # use window_size and overlap instead of TIME_PERIODS and STEP_DISTANCE so we can change it when calling the function
-    windows, labels = create_windows_and_labels(dataset, window_size, window_overlap)
-
-    # convert all data to float32 so TF can read it
-    x = windows.astype('float32')
-    y = labels.astype('float32')
-    # dct_train_x = dct_train_x.astype('float32')
-    # dct_train_y = dct_train_y.astype('float32')
-    # dct_test_x = dct_test_x.astype('float32')
-    # dct_test_y = dct_test_y.astype('float32')
-
-    # perform one-hot encoding on the labels
-    # TODO: try doing this one-hot encoding the way the other tutorial does so i don't have to import keras as well
-    y_hot = np_utils.to_categorical(y, num_classes)
-
-    return x, y_hot
-
-
-def prepare_subject_data_train_test(data_path, window_size=80, window_overlap=40, validation_split=0.7,
-                                    random_split=True,
-                                    perform_dct=False):
-    """Get all data for the given subject, process it and split it into training and testing sets for the model"""
-    dataset = read_data(data_path)
-
-    dataset, num_classes = normalise_and_encode_activities(dataset)
-
-    windows, labels = create_windows_and_labels(dataset, window_size, window_overlap)
-
-    # if perform_dct:
-    # windows_dcted = dct_windows(windows).reshape(-1, window_size, 12)
-
-    windows = windows.reshape(-1, window_size, 12)
-    train_x, train_y, test_x, test_y = split_train_test(windows, labels, validation_split, random_split)
-    # dct_train_x, dct_train_y, dct_test_x, dct_test_y = split_training_test(windows_dcted, labels, validation_split, random_split)
-
-    # convert all data to float32 so TF can read it
-    train_x = train_x.astype('float32')
-    train_y = train_y.astype('float32')
-    test_x = test_x.astype('float32')
-    test_y = test_y.astype('float32')
-    # dct_train_x = dct_train_x.astype('float32')
-    # dct_train_y = dct_train_y.astype('float32')
-    # dct_test_x = dct_test_x.astype('float32')
-    # dct_test_y = dct_test_y.astype('float32')
-
-    # perform one-hot encoding on the labels
-    # TODO: try doing this one-hot encoding the way the other tutorial does so i don't have to import keras as well
-    train_y_hot = np_utils.to_categorical(train_y, num_classes)
-    test_y_hot = np_utils.to_categorical(test_y, num_classes)
-    # dct_train_y_hot = np_utils.to_categorical(dct_train_y, num_classes)
-    # dct_test_y_hot = np_utils.to_categorical(dct_test_y, num_classes)
-
-    return train_x, train_y_hot, test_x, test_y_hot  # , dct_train_x, dct_train_y, dct_test_x, dct_test_y
-
-
-def prepare_subject_data_by_sensor_train_test(data_path, window_size=80, window_overlap=40, validation_split=0.7,
-                                              random_split=True,
-                                              perform_dct=False):
-    """Same as prepare_subject_data but splits the features from each sensor, giving the x,y,z axes of each accelerometer
-    and gyroscope from both phone and watch in separate arrays"""
-    dataset = read_data(data_path)
-
-    dataset, num_classes = normalise_and_encode_activities(dataset)
-
-    ap, gp, aw, gw, labels = create_windows_by_sensor(dataset, window_size, window_overlap)
-    # print(ap.shape, gp.shape, aw.shape, gw.shape, labels.shape)
-    train_ap, train_gp, train_aw, train_gw, train_labels, test_ap, test_gp, test_aw, test_gw, test_labels = split_sensors_train_test(
-        ap, gp, aw, gw, labels, random=False)
-
-    # convert all data to float32 so TF can read it
-    train_ap = train_ap.astype('float32')
-    train_gp = train_gp.astype('float32')
-    train_aw = train_aw.astype('float32')
-    train_gw = train_gw.astype('float32')
-    train_labels = train_labels.astype('float32')
-    test_ap = test_ap.astype('float32')
-    test_gp = test_gp.astype('float32')
-    test_aw = test_aw.astype('float32')
-    test_gw = test_gw.astype('float32')
-    test_labels = test_labels.astype('float32')
-
-    # perform one-hot encoding on the labels
-    # TODO: try doing this one-hot encoding the way the other tutorial does so i don't have to import keras as well
-    train_y_hot = np_utils.to_categorical(train_labels, num_classes)
-    test_y_hot = np_utils.to_categorical(test_labels, num_classes)
-
-    return train_ap, train_gp, train_aw, train_gw, train_y_hot, test_ap, test_gp, test_aw, test_gw, test_y_hot
-
-
-def prepare_subject_data_by_sensor(data_path, window_size=80, window_overlap=40):
-    """Same as prepare_subject_data but splits the features from each sensor, giving the x,y,z axes of each accelerometer
-    and gyroscope from both phone and watch in separate arrays"""
-    dataset = read_data(data_path)
-
-    dataset, num_classes = normalise_and_encode_activities(dataset)
-
-    ap, gp, aw, gw, labels = create_windows_by_sensor(dataset, window_size, window_overlap)
-    # print(ap.shape, gp.shape, aw.shape, gw.shape, labels.shape)
-
-    # convert all data to float32 so TF can read it
-    ap = ap.astype('float32')
-    gp = gp.astype('float32')
-    aw = aw.astype('float32')
-    gw = gw.astype('float32')
-    labels = labels.astype('float32')
-
-    # perform one-hot encoding on the labels
-    # TODO: try doing this one-hot encoding the way the other tutorial does so i don't have to import keras as well
-    y_hot = np_utils.to_categorical(labels, num_classes)
-
-    return ap, gp, aw, gw, y_hot
-
-
-def test_data_prep():
-    train_ap, train_gp, train_aw, train_gw, train_labels, test_ap, test_gp, test_accel_watch, test_gw, test_labels = prepare_subject_data_by_sensor_train_test(
-        'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt', validation_split=0.7,
-        random_split=False)
-    print("bysensor:", train_ap.shape, train_gp.shape, train_aw.shape, train_gw.shape, train_labels.shape,
-          test_ap.shape, test_gp.shape, test_accel_watch.shape, test_gw.shape, test_labels.shape)
-
-    train_x, train_y, test_x, test_y = prepare_subject_data_train_test(
-        'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt', validation_split=0.7,
-        random_split=False)
-    print("original:", train_x.shape, train_y.shape, test_x.shape, test_y.shape)
-
-
-def run_by_subject(iterations_per_subject=1):
-    # make different models for different number of features
-    # some subjects don't have data for certain classes so need to use different number of features for their model
-    cnn_18_classes = models_spec.basic_mlp()
-    cnn_17_classes = models_spec.basic_mlp(num_classes=17)
-    cnn_16_classes = models_spec.basic_mlp(num_classes=16)
-    # TODO: SUBJECT 07 and 09 have no records for activity J, so need to change the model to have 17 features
-    #  when training on their data
-    # output = ""
-    for i in range(51):
-        subject_id = str(i)
-        if i < 10:
-            subject_id = '0' + subject_id
-
-        print("Subject " + subject_id)
-        # output += "\n\nSubject" + subject_id
-        train_x, train_y, test_x, test_y = prepare_subject_data_train_test(
-            'wisdm-merged/subject_full_merge/16' + subject_id + '_merged_data.txt', random_split=False)
-
-        if train_y.shape[1] == 18:
-            model = cnn_18_classes
-        elif train_y.shape[1] == 17:
-            model = cnn_17_classes
-            # output += "\nSubject has 17 classes"
-            print("Subject has 17 classes")
-        elif train_y.shape[1] == 16:
-            model = cnn_16_classes
-            # output += "\nSubject has 16 classes"
-            print("Subject has 16 classes")
-        else:
-            raise ValueError("Subject is missing more features than expected, only has:", train_y.shape[1])
-
-        for run_no in range(1, iterations_per_subject + 1):
-            print("Run", run_no)
-            # output += "\n\nRun: " + str(run_no)
-            # epochs and batch size [1] B. Oluwalade, S. Neela, J. Wawira, T. Adejumo, and S. Purkayastha, “Human Activity Recognition using Deep Learning Models on Smartphones and Smartwatches Sensor Data,” pp. 645–650, 2021, doi: 10.5220/0010325906450650.
-            trained_model = models_spec.train_model(model, train_x, train_y, batch_size=32, epochs=148, verbose=0)
-            accuracy = models_spec.evaluate_model(trained_model, test_x, test_y)
-            print("Subject ID " + subject_id + ":", accuracy, "\n")
-            # output += "\nSubject ID " + subject_id + " accuracy: " + str(accuracy)
-
-    # f = open("outputs/run" + str(execution_id) + ".txt", "w")
-    # f.write(output)
-    # f.close()
-
-
-def run_all_data(iterations=1):
-    train_x, train_y, test_x, test_y = prepare_subject_data_train_test('wisdm-merged/complete_merge.txt')
-    model = models_spec.basic_mlp()
-    for run_no in range(1, iterations + 1):
-        trained_model = models_spec.train_model(model, train_x, train_y, verbose=1)
-        accuracy = models_spec.evaluate_model(trained_model, test_x, test_y)
-        print("Accuracy for run #" + str(run_no) + ":", accuracy)
-
-
-def simple_run():
+def simple_run(make_confusion_matrix=False):
     # model = models.wijekoon_wiratunga()
     model = models_spec.paper_cnn()
     # model = models_spec.basic_lstm()
@@ -476,25 +108,37 @@ def simple_run():
 
         print("Subject " + subject_id)
         # output += "\n\nSubject" + subject_id
-        train_x, train_y, test_x, test_y = prepare_subject_data_train_test(
+        train_x, train_y, test_x, test_y, val_x, val_y, label_encoder = preprocess.preprocess_subject_data_train_test_val(
             'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/16' + subject_id + '_merged_data.txt',
-            validation_split=0.7,
-            random_split=True)
+            split=[0.6, 0.2, 0.2],
+            random_split=False)
 
         if train_y.shape[1] != 18:
             print("Subject only has:", train_y.shape[1], "features")
             continue
 
-        # output += "\n\nRun: " + str(run_no)
-        # epochs and batch size [1] B. Oluwalade, S. Neela, J. Wawira, T. Adejumo, and S. Purkayastha, “Human Activity Recognition using Deep Learning Models on Smartphones and Smartwatches Sensor Data,” pp. 645–650, 2021, doi: 10.5220/0010325906450650.
         trained_model = models_spec.train_model(model, train_x, train_y, batch_size=32, epochs=25, verbose=1)
-        accuracy = models_spec.evaluate_model(trained_model, test_x, test_y)
+        evaluated_model, loss, accuracy = models_spec.evaluate_model(trained_model, test_x, test_y)
         print("Subject ID " + subject_id + ":", accuracy, "\n")
+
+        pred_y = evaluated_model.predict_classes(val_x)
+        decoded_pred_y = label_encoder.inverse_transform(pred_y)
+        decoded_val_y = decode_labels(val_y, label_encoder)
+        non_hot_val_y = undo_one_hot_encoding(val_y)
+        correct_predictions = 0
+        for i in range(len(pred_y)):
+            if pred_y[i] == non_hot_val_y[i]:
+                correct_predictions += 1
+        print("validation accuracy:", correct_predictions / len(val_y))
+
+        if make_confusion_matrix:
+            evaluation.plot_confusion_matrix(subject_id, non_hot_val_y, pred_y, label_encoder)
 
 
 def train_one_test_two():
-    x, y = prepare_subject_data('C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt')
-    x2, y2 = prepare_subject_data('C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1601_merged_data.txt')
+    x, y, le = preprocess.preprocess_subject_data('C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt')
+    x2, y2, le = preprocess.preprocess_subject_data(
+        'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1601_merged_data.txt')
 
     model = models_spec.paper_cnn()
     print("Training")
@@ -504,30 +148,31 @@ def train_one_test_two():
     print("Accuracy:", accuracy)
 
 
-def parallel_run():
-    train_ap, train_gp, train_aw, train_gw, train_labels, test_ap, test_gp, test_accel_watch, test_gw, test_labels = prepare_subject_data_by_sensor_train_test(
-        'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt', validation_split=0.7,
-        random_split=False)
-
-    model = models_spec.parallel_test2(train_gp.shape[1:], 18)
-    trained_model = models_spec.train_model_by_sensor(model, train_ap, train_gp, train_aw, train_gw, train_labels,
-                                                      batch_size=32, epochs=25, verbose=1)
-    accuracy = models_spec.evaluate_model_by_sensor(model, test_ap, test_gp, test_accel_watch, test_gw, test_labels)
-    print(accuracy)
-    # train_x, train_y, test_x, test_y = prepare_subject_data(
-    #     'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt', validation_split=0.7)
-
-
-def deepSenseRun():
-    train_ap, train_gp, train_aw, train_gw, train_labels, test_ap, test_gp, test_aw, test_gw, test_labels = prepare_subject_data_by_sensor_train_test(
+def deep_sense_run():
+    # train_ap, train_gp, train_aw, train_gw, train_labels, test_ap, test_gp, test_aw, test_gw, test_labels, label_encoder = preprocess_subject_data_by_sensor_train_test(
+    #     'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt', window_overlap=40,
+    #     split_ratio=0.7,
+    #     random_split=False)
+    train_data, test_data, label_encoder = preprocess.preprocess_subject_data_by_sensor_train_test(
         'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt', window_overlap=80,
-        validation_split=0.7,
+        split_ratio=0.7,
         random_split=False)
-    print("1:", train_ap.shape, train_gp.shape, train_aw.shape, train_gw.shape, train_labels.shape, test_ap.shape,
-          test_gp.shape, test_aw.shape, test_gw.shape, test_labels.shape)
-    ap2, gp2, aw2, gw2, labels2 = prepare_subject_data_by_sensor(
-        'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1601_merged_data.txt')
-    print("2:", ap2.shape, gp2.shape, aw2.shape, gw2.shape, labels2.shape)
+    train_ap = train_data['ap']
+    train_gp = train_data['gp']
+    train_aw = train_data['aw']
+    train_gw = train_data['gw']
+    train_labels = train_data['labels']
+    test_ap = test_data['ap']
+    test_gp = test_data['gp']
+    test_aw = test_data['aw']
+    test_gw = test_data['gw']
+    test_labels = test_data['labels']
+
+    # print("1:", train_ap.shape, train_gp.shape, train_aw.shape, train_gw.shape, train_labels.shape, test_ap.shape,
+    #       test_gp.shape, test_aw.shape, test_gw.shape, test_labels.shape)
+    # ap2, gp2, aw2, gw2, labels2, label_encoder = preprocess_subject_data_by_sensor(
+    #     'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1601_merged_data.txt')
+    # print("2:", ap2.shape, gp2.shape, aw2.shape, gw2.shape, labels2.shape)
     batch_size = 32
     model = myDeepSense.u_deep_sense(train_gp.shape[1:], 18, batch_size=batch_size)
     print("Training")
@@ -539,50 +184,68 @@ def deepSenseRun():
     i = 1
     while not saved:
         if not os.path.exists(file_path + str(i)):
-            model.save('saved_models/uDeepSense' + str(i))
+            trained_model.save('saved_models/uDeepSense' + str(i))
             saved = True
         i += 1
 
-    # print(trained_model(include_top=False))
-    accuracy = myDeepSense.evaluate(model, ap2, gp2, aw2, gw2, labels2)
+    accuracy = myDeepSense.evaluate(model, test_ap, test_gp, test_aw, test_gw, test_labels)
     print("Accuracy:", accuracy)
 
 
+# deep_sense_run_all_but_one()
+
+
+
 def transfer_learn():
-    train_ap, train_gp, train_aw, train_gw, train_labels, test_ap, test_gp, test_aw, test_gw, test_labels = prepare_subject_data_by_sensor_train_test(
-        'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1601_merged_data.txt')
-    original_model = tf.keras.models.load_model('saved_models/uDeepSense')
-    print(original_model.summary())
-    print(myDeepSense.evaluate(original_model, train_ap, train_gp, train_aw, train_gw, train_labels))
+    # train_ap, train_gp, train_aw, train_gw, train_labels, test_ap, test_gp, test_aw, test_gw, test_labels, label_encoder = preprocess_subject_data_by_sensor_train_test(
+    #     'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1601_merged_data.txt')
+
+    train_data, test_data, label_encoder = preprocess.preprocess_subject_data_by_sensor_train_test(
+        'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt', window_overlap=80,
+        split_ratio=0.7,
+        random_split=False)
+    train_ap = train_data['ap']
+    train_gp = train_data['gp']
+    train_aw = train_data['aw']
+    train_gw = train_data['gw']
+    train_labels = train_data['labels']
+    test_ap = test_data['ap']
+    test_gp = test_data['gp']
+    test_aw = test_data['aw']
+    test_gw = test_data['gw']
+    test_labels = test_data['labels']
+
+    original_model = tf.keras.models.load_model('saved_models/uDeepSense3')
 
     for i in range(len(original_model.layers) - 2):
         original_model.layers[i].trainable = False
 
     # TODO: see if the transfer learning can be be just as accurate with a low proportion of train:test data
-    transfer_layer1 = original_model.layers[-2].output
-    transfer_dense_layers = layers.Dense(36)(transfer_layer1)
-    transfer_dense_layers = layers.Dense(72)(transfer_dense_layers)
-    transfer_out_layer = layers.Dense(18, activation='softmax')(transfer_dense_layers)
-    new_model = models.Model(inputs=original_model.input, outputs=transfer_out_layer)
-    new_model.add_metric(tfa.metrics.f_scores.F1Score()(transfer_out_layer), name='f1_score')
-    new_model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+    # transfer_layer1 = original_model.layers[-2].output
+    # transfer_dense_layers = layers.Dense(36)(transfer_layer1)
+    # transfer_dense_layers = layers.Dense(72)(transfer_dense_layers)
+    # transfer_out_layer = layers.Dense(18, activation='softmax')(transfer_dense_layers)
+    # new_model = models.Model(inputs=original_model.input, outputs=transfer_out_layer)
+    # # new_model.add_metric(tfa.metrics.f_scores.F1Score()(transfer_out_layer), name='f1_score')
+    # new_model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+    # print(new_model.summary)
+    transfer_learn_model = myDeepSense.transfer_learn_model(original_model)
 
-    trained_model = myDeepSense.train(new_model, train_ap, train_gp, train_aw, train_gw, train_labels, batch_size=32,
-                                      epochs=25, verbose=1)
+    trained_model = myDeepSense.train(transfer_learn_model, train_ap, train_gp, train_aw, train_gw, train_labels,
+                                      batch_size=32, epochs=25, verbose=1)
     print("Accuracy:", myDeepSense.evaluate(trained_model, test_ap, test_gp, test_aw, test_gw, test_labels))
 
 
-pd.set_option('display.max_columns', None)
-pd.set_option('display.width', None)
-pd.set_option('display.max_colwidth', None)
+# pd.set_option('display.max_columns', None)
+# pd.set_option('display.width', None)
+# pd.set_option('display.max_colwidth', None)
 # np.set_printoptions(threshold=np.inf)
 
 
 # run_by_subject()
 # run_all_data()
-simple_run()
-# parallel_run()
+# simple_run()
 # test_data_prep()
-# deepSenseRun()
+# deep_sense_run()
 # train_one_test_two()
-# transfer_learn()
+transfer_learn()

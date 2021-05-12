@@ -2,8 +2,6 @@ import tensorflow as tf
 from tensorflow.keras import models, layers
 
 
-
-
 def individual_conv_layers(input_layer):
     num_filters = 64
     kernel_size1 = 18
@@ -29,7 +27,6 @@ def individual_conv_layers(input_layer):
 
 # TODO: work out the right sizes for filter size, kernel size, stride etc from what Davide defined his values based on
 def u_deep_sense(input_shape=(80, 3), num_classes=18, batch_size=64):
-    length = input_shape[0]
     ap = layers.Input(shape=input_shape)
     gp = layers.Input(shape=input_shape)
     aw = layers.Input(shape=input_shape)
@@ -62,6 +59,7 @@ def u_deep_sense(input_shape=(80, 3), num_classes=18, batch_size=64):
     print(merge_conv3_shape)
     print("merge_output:", merge_output.get_shape())
 
+    # length = input_shape[0]
     # num_cells = 18
     # gru_cell1 = layers.GRUCell(num_cells)
     # gru_cell1 = tf.nn.RNNCellDropoutWrapper(gru_cell1, 0.5)
@@ -80,7 +78,7 @@ def u_deep_sense(input_shape=(80, 3), num_classes=18, batch_size=64):
     # # avg_rnn_output = sum_rnn_output / tf.tile(length, [1, num_cells])
 
     # gru = layers.GRU(18, batch_input_shape=(batch_size, input_shape[0], 18), dropout=0.5)(merge_output)
-    gru = layers.GRU(18, dropout=0.5)(merge_output)
+    gru = layers.GRU(36, dropout=0.5)(merge_output)
 
     output = layers.Dense(num_classes, activation='softmax')(gru)
 
@@ -88,6 +86,22 @@ def u_deep_sense(input_shape=(80, 3), num_classes=18, batch_size=64):
     model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
     print(model.summary())
     return model
+
+
+def transfer_learn_model(original_model):
+    for i in range(len(original_model.layers) - 2):
+        original_model.layers[i].trainable = False
+
+    # TODO: see if the transfer learning can be be just as accurate with a low proportion of train:test data
+    transfer_layer1 = original_model.layers[-2].output
+    transfer_dense_layers = layers.Dense(36)(transfer_layer1)
+    transfer_dense_layers = layers.Dense(72)(transfer_dense_layers)
+    transfer_out_layer = layers.Dense(18, activation='softmax')(transfer_dense_layers)
+    new_model = models.Model(inputs=original_model.input, outputs=transfer_out_layer)
+    # new_model.add_metric(tfa.metrics.f_scores.F1Score()(transfer_out_layer), name='f1_score')
+    new_model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+    print(new_model.summary())
+    return new_model
 
 
 def train(model, train_ap, train_gp, train_aw, train_gw, train_labels, batch_size, epochs, verbose=1):
