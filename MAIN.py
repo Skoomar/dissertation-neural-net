@@ -108,7 +108,7 @@ def simple_run(make_confusion_matrix=False):
 
         print("Subject " + subject_id)
         # output += "\n\nSubject" + subject_id
-        train_x, train_y, test_x, test_y, val_x, val_y, label_encoder = preprocess.preprocess_subject_data_train_test_val(
+        train_x, train_y, test_x, test_y, val_x, val_y, label_encoder = preprocess.preprocess_subject_train_test_val(
             'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/16' + subject_id + '_merged_data.txt',
             split=[0.6, 0.2, 0.2],
             random_split=False)
@@ -136,8 +136,8 @@ def simple_run(make_confusion_matrix=False):
 
 
 def train_one_test_two():
-    x, y, le = preprocess.preprocess_subject_data('C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt')
-    x2, y2, le = preprocess.preprocess_subject_data(
+    x, y, le = preprocess.preprocess_subject('C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt')
+    x2, y2, le = preprocess.preprocess_subject(
         'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1601_merged_data.txt')
 
     model = models_spec.paper_cnn()
@@ -149,14 +149,14 @@ def train_one_test_two():
 
 
 def deep_sense_run():
-    # train_ap, train_gp, train_aw, train_gw, train_labels, test_ap, test_gp, test_aw, test_gw, test_labels, label_encoder = preprocess_subject_data_by_sensor_train_test(
-    #     'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt', window_overlap=40,
+    # train_data, test_data, label_encoder = preprocess.preprocess_subject_by_sensor_train_test(
+    #     'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt', window_overlap=80,
     #     split_ratio=0.7,
     #     random_split=False)
-    train_data, test_data, label_encoder = preprocess.preprocess_subject_data_by_sensor_train_test(
-        'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt', window_overlap=80,
-        split_ratio=0.7,
+    train_data, test_data, label_encoder = preprocess.leave_one_out_cv_by_sensor(
+        'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge', '1600', window_overlap=80, split_ratio=0.7,
         random_split=False)
+
     train_ap = train_data['ap']
     train_gp = train_data['gp']
     train_aw = train_data['aw']
@@ -173,26 +173,24 @@ def deep_sense_run():
     # ap2, gp2, aw2, gw2, labels2, label_encoder = preprocess_subject_data_by_sensor(
     #     'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1601_merged_data.txt')
     # print("2:", ap2.shape, gp2.shape, aw2.shape, gw2.shape, labels2.shape)
-    batch_size = 32
+    batch_size = 64
     model = myDeepSense.u_deep_sense(train_gp.shape[1:], 18, batch_size=batch_size)
     print("Training")
     trained_model = myDeepSense.train(model, train_ap, train_gp, train_aw, train_gw, train_labels,
                                       batch_size=batch_size, epochs=25, verbose=1)
+    print('Evaluating')
+    evaluated_model, loss, accuracy = myDeepSense.evaluate(model, test_ap, test_gp, test_aw, test_gw, test_labels)
+    print("Accuracy:", accuracy)
 
+    print('Saving model')
     file_path = 'saved_models/uDeepSense'
     saved = False
     i = 1
     while not saved:
         if not os.path.exists(file_path + str(i)):
-            trained_model.save('saved_models/uDeepSense' + str(i))
+            evaluated_model.save('saved_models/uDeepSense' + str(i))
             saved = True
         i += 1
-
-    accuracy = myDeepSense.evaluate(model, test_ap, test_gp, test_aw, test_gw, test_labels)
-    print("Accuracy:", accuracy)
-
-
-# deep_sense_run_all_but_one()
 
 
 
@@ -200,7 +198,7 @@ def transfer_learn():
     # train_ap, train_gp, train_aw, train_gw, train_labels, test_ap, test_gp, test_aw, test_gw, test_labels, label_encoder = preprocess_subject_data_by_sensor_train_test(
     #     'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1601_merged_data.txt')
 
-    train_data, test_data, label_encoder = preprocess.preprocess_subject_data_by_sensor_train_test(
+    train_data, test_data, label_encoder = preprocess.preprocess_subject_by_sensor_train_test(
         'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt', window_overlap=80,
         split_ratio=0.7,
         random_split=False)
@@ -215,7 +213,7 @@ def transfer_learn():
     test_gw = test_data['gw']
     test_labels = test_data['labels']
 
-    original_model = tf.keras.models.load_model('saved_models/uDeepSense3')
+    original_model = tf.keras.models.load_model('saved_models/uDeepSense_loocv1600_no_overlap')
 
     for i in range(len(original_model.layers) - 2):
         original_model.layers[i].trainable = False
@@ -233,7 +231,10 @@ def transfer_learn():
 
     trained_model = myDeepSense.train(transfer_learn_model, train_ap, train_gp, train_aw, train_gw, train_labels,
                                       batch_size=32, epochs=25, verbose=1)
-    print("Accuracy:", myDeepSense.evaluate(trained_model, test_ap, test_gp, test_aw, test_gw, test_labels))
+    # print("Accuracy:", myDeepSense.evaluate(trained_model, test_ap, test_gp, test_aw, test_gw, test_labels))
+    print('Evaluating')
+    evaluated_model, loss, accuracy = myDeepSense.evaluate(trained_model, test_ap, test_gp, test_aw, test_gw, test_labels)
+    print("Accuracy:", accuracy)
 
 
 # pd.set_option('display.max_columns', None)

@@ -116,4 +116,4 @@ def train(model, train_ap, train_gp, train_aw, train_gw, train_labels, batch_siz
 
 def evaluate(model, test_ap, test_gp, test_aw, test_gw, test_labels, verbose=2):
     test_loss, test_accuracy = model.evaluate([test_ap, test_gp, test_aw, test_gw], test_labels, verbose=verbose)
-    return test_accuracy
+    return model, test_loss, test_accuracy

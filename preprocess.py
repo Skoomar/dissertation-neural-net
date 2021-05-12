@@ -213,7 +213,7 @@ def split_by_sensor_train_test(accel_phone, gyro_phone, accel_watch, gyro_watch,
     return train_ap, train_gp, train_aw, train_gw, train_labels, test_ap, test_gp, test_aw, test_gw, test_labels
 
 
-def normalise_and_encode_activities(data):
+def normalise_and_encode_activities(data, label_encoder=None):
     data['x-axis_accel_phone'] = feature_normalise(data['x-axis_accel_phone'])
     data['y-axis_accel_phone'] = feature_normalise(data['y-axis_accel_phone'])
     data['z-axis_accel_phone'] = feature_normalise(data['z-axis_accel_phone'])
@@ -230,13 +230,16 @@ def normalise_and_encode_activities(data):
     # encode the labels into numerical representations so the neural network can work with them
     ENCODED_LABEL = 'ActivityEncoded'
     # use LabelEncoder to convert from String to Integer
-    le = preprocessing.LabelEncoder()
-    # add the new encoded labels as a column in the dataset
-    data[ENCODED_LABEL] = le.fit_transform(data['activity'].values.ravel())
-    return data, le
+    if label_encoder is None:
+        label_encoder = preprocessing.LabelEncoder()
+        # add the new encoded labels as a column in the dataset
+        data[ENCODED_LABEL] = label_encoder.fit_transform(data['activity'].values.ravel())
+    else:
+        data[ENCODED_LABEL] = label_encoder.transform(data['activity'].values.ravel())
+    return data, label_encoder
 
 
-def preprocess_subject_data(data_path, window_size=80, window_overlap=40):
+def preprocess_subject(data_path, window_size=80, window_overlap=40):
     """Get all data for the given subject, process it and split it into training and testing sets for the model"""
     dataset = read_data(data_path)
 
@@ -263,8 +266,8 @@ def preprocess_subject_data(data_path, window_size=80, window_overlap=40):
     return x, y_hot, label_encoder
 
 
-def preprocess_subject_data_train_test(data_path, window_size=80, window_overlap=40, split=0.7,
-                                       random_split=True):
+def preprocess_subject_train_test(data_path, window_size=80, window_overlap=40, split=0.7,
+                                  random_split=True):
     """Get all data for the given subject, process it and split it into training and testing sets for the model"""
     dataset = read_data(data_path)
 
@@ -288,8 +291,8 @@ def preprocess_subject_data_train_test(data_path, window_size=80, window_overlap
     return train_x, train_y_hot, test_x, test_y_hot, label_encoder
 
 
-def preprocess_subject_data_train_test_val(data_path, window_size=80, window_overlap=40, split=(0.5, 0.3, 0.2),
-                                           random_split=True):
+def preprocess_subject_train_test_val(data_path, window_size=80, window_overlap=40, split=(0.5, 0.3, 0.2),
+                                      random_split=True):
     """Get all data for the given subject, process it and split it into training, testing, and validation
         sets for the model"""
     dataset = read_data(data_path)
@@ -318,7 +321,7 @@ def preprocess_subject_data_train_test_val(data_path, window_size=80, window_ove
     return train_x, train_y_hot, test_x, test_y_hot, val_x, val_y_hot, label_encoder
 
 
-def preprocess_subject_data_by_sensor(data_path, window_size=80, window_overlap=40):
+def preprocess_subject_by_sensor(data_path, window_size=80, window_overlap=40):
     """Same as prepare_subject_data but splits the features from each sensor, giving the x,y,z axes of each
     accelerometer and gyroscope from both phone and watch in separate arrays"""
     dataset = read_data(data_path)
@@ -341,13 +344,13 @@ def preprocess_subject_data_by_sensor(data_path, window_size=80, window_overlap=
     return ap, gp, aw, gw, y_hot, label_encoder
 
 
-def preprocess_subject_data_by_sensor_train_test(data_path, window_size=80, window_overlap=40, split_ratio=0.7,
-                                                 random_split=True):
+def preprocess_subject_by_sensor_train_test(data_path, window_size=80, window_overlap=40, split_ratio=0.7,
+                                            random_split=True, label_encoder=None):
     """Same as prepare_subject_data but splits the features from each sensor, giving the x,y,z axes of each
     accelerometer and gyroscope from both phone and watch in separate arrays"""
     dataset = read_data(data_path)
 
-    dataset, label_encoder = normalise_and_encode_activities(dataset)
+    dataset, label_encoder = normalise_and_encode_activities(dataset, label_encoder)
 
     ap, gp, aw, gw, labels = create_windows_by_sensor(dataset, window_size, window_overlap)
     train_ap, train_gp, train_aw, train_gw, train_labels, test_ap, test_gp, test_aw, test_gw, test_labels = split_by_sensor_train_test(
@@ -378,11 +381,12 @@ def preprocess_subject_data_by_sensor_train_test(data_path, window_size=80, wind
 
 
 def leave_one_out_cv_by_sensor(data_path, left_out, window_size=80, window_overlap=40, split_ratio=0.7,
-                                                 random_split=True):
-    """Preprocess data from all subjects except one
+                               random_split=True):
+    """Preprocess data from all subjects except one for Leave-One-Out Cross-Validation
+
         Parameters
             data_path (str): path to the directory where all subject data is stored
-            left_out (int): the ID of the subject to be left out
+            left_out (str): the ID of the subject to be left out
             window_size (int): how many records to be in each window
             window_overlap (int): how much overlap between each window. window_overlap==window_size means no overlap
             split_ratio (float): the ratio of training to testing data
@@ -391,20 +395,71 @@ def leave_one_out_cv_by_sensor(data_path, left_out, window_size=80, window_overl
         Returns:
 
     """
-    train_x = []
-    train_y = []
-    test_x = []
-    test_y = []
+    # Get data for the subject to be left out
+    loocv_file_path = data_path + '/' + left_out + '_merged_data.txt'
+    loocv_train_data, loocv_test_data, label_encoder = preprocess_subject_by_sensor_train_test(loocv_file_path,
+                                                                                               window_size,
+                                                                                               window_overlap,
+                                                                                               split_ratio,
+                                                                                               random_split)
+
+    train_ap = np.empty((0, window_size, 3))
+    train_gp = np.empty((0, window_size, 3))
+    train_aw = np.empty((0, window_size, 3))
+    train_gw = np.empty((0, window_size, 3))
+    train_labels = np.empty((0, 18))
+    test_ap = np.empty((0, window_size, 3))
+    test_gp = np.empty((0, window_size, 3))
+    test_aw = np.empty((0, window_size, 3))
+    test_gw = np.empty((0, window_size, 3))
+    test_labels = np.empty((0, 18))
 
     for i in range(51):
-        # skip the subject chosen to be left out
-        if i == left_out:
-            continue
 
         subject_id = str(i)
         if i < 10:
             subject_id = '0' + subject_id
-        file_path = data_path + '/16' + subject_id + '_merged_data.txt'
-        subject_data = preprocess_subject_data_by_sensor_train_test(file_path, window_size, window_overlap, split_ratio,
-                                                                    random_split)
+        subject_id = '16' + subject_id
+        # skip the subject chosen to be left out
+        if subject_id == left_out:
+            continue
 
+        print('Preprocess Subject ' + subject_id)
+
+        file_path = data_path + '/' + subject_id + '_merged_data.txt'
+        subject_train, subject_test, le = preprocess_subject_by_sensor_train_test(file_path, window_size,
+                                                                                       window_overlap, split_ratio,
+                                                                                       random_split, label_encoder)
+
+        # print(subject_train['ap'].shape, subject_train['labels'].shape, subject_test['ap'].shape, subject_test['labels'].shape)
+
+        train_ap = np.append(train_ap, subject_train['ap'], axis=0)
+        train_gp = np.append(train_gp, subject_train['gp'], axis=0)
+        train_aw = np.append(train_aw, subject_train['aw'], axis=0)
+        train_gw = np.append(train_gw, subject_train['gw'], axis=0)
+        train_labels = np.append(train_labels, subject_train['labels'], axis=0)
+        test_ap = np.append(test_ap, subject_test['ap'], axis=0)
+        test_gp = np.append(test_gp, subject_test['gp'], axis=0)
+        test_aw = np.append(test_aw, subject_test['aw'], axis=0)
+        test_gw = np.append(test_gw, subject_test['gw'], axis=0)
+        test_labels = np.append(test_labels, subject_test['labels'], axis=0)
+
+        # print(train_ap.shape, train_gp.shape, train_aw.shape, train_gw.shape, train_labels.shape, test_ap.shape, test_gp.shape,test_aw.shape,test_gw.shape,test_labels.shape)
+    train_data = {'ap': train_ap, 'gp': train_gp, 'aw': train_aw, 'gw': train_gw, 'labels': train_labels}
+    test_data = {'ap': test_ap, 'gp': test_gp, 'aw': test_aw, 'gw': test_gw, 'labels': test_labels}
+    return train_data, test_data, label_encoder
+
+
+# train_data, test_data, le = leave_one_out_cv_by_sensor('C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge', '1600')
+# print('ap',train_data['ap'].shape, 'gp',train_data['gp'].shape,'aw',train_data['aw'].shape,'gw',train_data['gw'].shape,'labels',train_data['labels'].shape)
+# print('ap',test_data['ap'].shape, 'gp',test_data['gp'].shape,'aw',test_data['aw'].shape,'gw',test_data['gw'].shape,'labels',test_data['labels'].shape)
+#
+# loocv_file_path = 'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt'
+# loocv_train_data, loocv_test_data, label_encoder = preprocess_subject_by_sensor_train_test(loocv_file_path,
+#                                                                                            80,
+#                                                                                            40,
+#                                                                                            0.7,
+#                                                                                            True)
+# subject_train, subject_test, le = preprocess_subject_by_sensor_train_test('C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1602_merged_data.txt', 80,40, 0.7,
+#                                                                                        False, label_encoder)
+# print(subject_train['labels'].shape)
