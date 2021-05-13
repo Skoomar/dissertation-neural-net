@@ -173,7 +173,7 @@ def train_model_by_sensor(model, train_ap, train_gp, train_aw, train_gw, train_l
 
 def evaluate_model(model, test_x, test_y, verbose=2):
     test_loss, test_accuracy = model.evaluate(test_x, test_y, verbose=verbose)
-    return model, test_loss, test_accuracy
+    return test_loss, test_accuracy
 
 
 def evaluate_model_by_sensor(model, test_ap, test_gp, test_aw, test_gw, test_labels, verbose=2):

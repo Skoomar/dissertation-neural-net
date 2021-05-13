@@ -25,11 +25,6 @@ pd.options.display.float_format = '{:.1f}'.format
 plt.style.use('ggplot')
 
 
-
-
-
-
-
 def plot_axis(ax, x, y, title):
     ax.plot(x, y)
     ax.set_title(title)
@@ -61,42 +56,6 @@ def plot_activity(activity, data):
     plt.show()
 
 
-
-
-
-
-def undo_one_hot_encoding(encoded):
-    non_hot = np.array([], dtype=np.int)
-    for i in range(len(encoded)):
-        non_hot = np.append(non_hot, int(np.where(encoded[i] == 1)[0]))
-    return non_hot
-
-
-def decode_labels(encoded_y, label_encoder):
-    """Reverse the one-hot encoding and numerical encoding of the original alphabetical identifiers for each activity
-        class
-
-    Parameters:
-        encoded_y (numpy array): array of labels in shape (x, 18) as we have 18 classes
-        label_encoder (scikit-learn LabelEncoder): the object that was used to encode this particular set of classes
-                                                    during preprocessing
-
-    Returns:
-            decoded_y (numpy array): array of values
-    """
-
-    # if it's one-hot encoded then reverse it to get numerical identifiers for the target label
-    if len(encoded_y.shape) == 2:
-        non_hot_y = undo_one_hot_encoding(encoded_y)
-    elif len(encoded_y.shape > 2):
-        raise ValueError('Array of labels should only have up to 2 dimensions')
-
-    # decode the numerical identifiers to the original alphabetical identifiers
-    decoded_y = label_encoder.inverse_transform(non_hot_y)
-    return decoded_y
-
-
-
 def simple_run(make_confusion_matrix=False):
     # model = models.wijekoon_wiratunga()
     model = models_spec.paper_cnn()
@@ -123,8 +82,8 @@ def simple_run(make_confusion_matrix=False):
 
         pred_y = evaluated_model.predict_classes(val_x)
         decoded_pred_y = label_encoder.inverse_transform(pred_y)
-        decoded_val_y = decode_labels(val_y, label_encoder)
-        non_hot_val_y = undo_one_hot_encoding(val_y)
+        decoded_val_y = evaluation.decode_labels(val_y, label_encoder)
+        non_hot_val_y = evaluation.undo_one_hot_encoding(val_y)
         correct_predictions = 0
         for i in range(len(pred_y)):
             if pred_y[i] == non_hot_val_y[i]:
@@ -136,7 +95,8 @@ def simple_run(make_confusion_matrix=False):
 
 
 def train_one_test_two():
-    x, y, le = preprocess.preprocess_subject('C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt')
+    x, y, le = preprocess.preprocess_subject(
+        'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt')
     x2, y2, le = preprocess.preprocess_subject(
         'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1601_merged_data.txt')
 
@@ -148,13 +108,13 @@ def train_one_test_two():
     print("Accuracy:", accuracy)
 
 
-def deep_sense_run():
+def deep_sense_run_train_test():
     # train_data, test_data, label_encoder = preprocess.preprocess_subject_by_sensor_train_test(
-    #     'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt', window_overlap=80,
+    #     'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt', window_step=80,
     #     split_ratio=0.7,
     #     random_split=False)
-    train_data, test_data, label_encoder = preprocess.leave_one_out_cv_by_sensor(
-        'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge', '1600', window_overlap=80, split_ratio=0.7,
+    train_data, test_data, label_encoder = preprocess.leave_one_out_cv_by_sensor_train_test(
+        'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge', '1600', window_step=80, split_ratio=0.7,
         random_split=False)
 
     train_ap = train_data['ap']
@@ -179,7 +139,7 @@ def deep_sense_run():
     trained_model = myDeepSense.train(model, train_ap, train_gp, train_aw, train_gw, train_labels,
                                       batch_size=batch_size, epochs=25, verbose=1)
     print('Evaluating')
-    evaluated_model, loss, accuracy = myDeepSense.evaluate(model, test_ap, test_gp, test_aw, test_gw, test_labels)
+    loss, accuracy = myDeepSense.evaluate(trained_model, test_ap, test_gp, test_aw, test_gw, test_labels)
     print("Accuracy:", accuracy)
 
     print('Saving model')
@@ -188,19 +148,70 @@ def deep_sense_run():
     i = 1
     while not saved:
         if not os.path.exists(file_path + str(i)):
-            evaluated_model.save('saved_models/uDeepSense' + str(i))
+            trained_model.save('saved_models/uDeepSense' + str(i))
             saved = True
         i += 1
+    print('Saved')
 
+
+def cnn_full_data():
+    x, y, label_encoder = preprocess.leave_one_out_cv(
+        'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge', '1600', window_step=80)
+
+    batch_size = 64
+    model = models_spec.paper_cnn(x.shape[1:], 18)
+    print("Training")
+    trained_model = models_spec.train_model(model, x, y,
+                                      batch_size=batch_size, epochs=25, verbose=1)
+    print('Saving model')
+    file_path = 'saved_models/CNN'
+    saved = False
+    i = 1
+    while not saved:
+        if not os.path.exists(file_path + str(i)):
+            model_path = file_path + str(i)
+            trained_model.save(model_path)
+            saved = True
+        i += 1
+    print('Saved as ' + model_path)
+
+
+def evaluate_cnn():
+    x, y, label_encoder = preprocess.preprocess_subject('C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt', window_step=80)
+    model = tf.keras.models.load_model('saved_models/CNN1')
+    print('Evaluating')
+    loss, accuracy = models_spec.evaluate_model(model, x, y)
+    print('CNN Accuracy:', accuracy)
+
+
+def deep_sense_run():
+    ap, gp, aw, gw, labels, label_encoder = preprocess.leave_one_out_cv_by_sensor(
+        'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge', '1600')
+
+    print("1:", ap.shape, gp.shape, aw.shape, gw.shape, labels.shape)
+
+    batch_size = 64
+    model = myDeepSense.u_deep_sense(ap.shape[1:], 18, batch_size=batch_size)
+    print("Training")
+    trained_model = myDeepSense.train(model, ap, gp, aw, gw, labels,
+                                      batch_size=batch_size, epochs=25, verbose=1)
+    print('Saving model')
+    file_path = 'saved_models/uDeepSense'
+    saved = False
+    i = 1
+    while not saved:
+        if not os.path.exists(file_path + str(i)):
+            model_path = file_path + str(i)
+            trained_model.save(model_path)
+            saved = True
+        i += 1
+    print('Saved as ' + model_path)
 
 
 def transfer_learn():
-    # train_ap, train_gp, train_aw, train_gw, train_labels, test_ap, test_gp, test_aw, test_gw, test_labels, label_encoder = preprocess_subject_data_by_sensor_train_test(
-    #     'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1601_merged_data.txt')
-
     train_data, test_data, label_encoder = preprocess.preprocess_subject_by_sensor_train_test(
-        'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt', window_overlap=80,
-        split_ratio=0.7,
+        'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt', window_step=80,
+        split_ratio=0.25,
         random_split=False)
     train_ap = train_data['ap']
     train_gp = train_data['gp']
@@ -213,28 +224,34 @@ def transfer_learn():
     test_gw = test_data['gw']
     test_labels = test_data['labels']
 
-    original_model = tf.keras.models.load_model('saved_models/uDeepSense_loocv1600_no_overlap')
+    original_model = tf.keras.models.load_model('saved_models/uDeepSense_loocv1600')
+    print('Evaluating')
+    loss, accuracy = myDeepSense.evaluate(original_model, test_ap, test_gp, test_aw, test_gw, test_labels)
+    print("original_model Accuracy:", accuracy)
 
     for i in range(len(original_model.layers) - 2):
         original_model.layers[i].trainable = False
 
     # TODO: see if the transfer learning can be be just as accurate with a low proportion of train:test data
-    # transfer_layer1 = original_model.layers[-2].output
-    # transfer_dense_layers = layers.Dense(36)(transfer_layer1)
-    # transfer_dense_layers = layers.Dense(72)(transfer_dense_layers)
-    # transfer_out_layer = layers.Dense(18, activation='softmax')(transfer_dense_layers)
-    # new_model = models.Model(inputs=original_model.input, outputs=transfer_out_layer)
-    # # new_model.add_metric(tfa.metrics.f_scores.F1Score()(transfer_out_layer), name='f1_score')
-    # new_model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
-    # print(new_model.summary)
+    # around 0.25/0.3 split_ratio seems to be the sweet spot where accuracy is not lost too much
+
     transfer_learn_model = myDeepSense.transfer_learn_model(original_model)
 
     trained_model = myDeepSense.train(transfer_learn_model, train_ap, train_gp, train_aw, train_gw, train_labels,
                                       batch_size=32, epochs=25, verbose=1)
     # print("Accuracy:", myDeepSense.evaluate(trained_model, test_ap, test_gp, test_aw, test_gw, test_labels))
     print('Evaluating')
-    evaluated_model, loss, accuracy = myDeepSense.evaluate(trained_model, test_ap, test_gp, test_aw, test_gw, test_labels)
+    loss, accuracy = myDeepSense.evaluate(trained_model, test_ap, test_gp, test_aw, test_gw, test_labels)
     print("Accuracy:", accuracy)
+
+    #################################
+    pred_labels = trained_model.predict([test_ap, test_gp, test_aw, test_gw])
+    pred_labels = np.argmax(pred_labels, axis=1)
+    decoded_test_labels = evaluation.undo_one_hot_encoding(test_labels)
+
+    evaluation.plot_confusion_matrix('LOOCV on Subject 1600', decoded_test_labels, pred_labels, label_encoder)
+
+
 
 
 # pd.set_option('display.max_columns', None)
@@ -243,10 +260,8 @@ def transfer_learn():
 # np.set_printoptions(threshold=np.inf)
 
 
-# run_by_subject()
-# run_all_data()
 # simple_run()
-# test_data_prep()
 # deep_sense_run()
-# train_one_test_two()
-transfer_learn()
+# transfer_learn()
+# cnn_full_data()
+# evaluate_cnn()

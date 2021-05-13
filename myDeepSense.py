@@ -94,9 +94,9 @@ def transfer_learn_model(original_model):
 
     # TODO: see if the transfer learning can be be just as accurate with a low proportion of train:test data
     transfer_layer1 = original_model.layers[-2].output
-    transfer_dense_layers = layers.Dense(36)(transfer_layer1)
-    transfer_dense_layers = layers.Dense(72)(transfer_dense_layers)
-    transfer_out_layer = layers.Dense(18, activation='softmax')(transfer_dense_layers)
+    # transfer_dense_layers = layers.Dense(36)(transfer_layer1)
+    # transfer_dense_layers = layers.Dense(72)(transfer_dense_layers)
+    transfer_out_layer = layers.Dense(18, activation='softmax')(transfer_layer1)
     new_model = models.Model(inputs=original_model.input, outputs=transfer_out_layer)
     # new_model.add_metric(tfa.metrics.f_scores.F1Score()(transfer_out_layer), name='f1_score')
     new_model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
@@ -116,4 +116,4 @@ def train(model, train_ap, train_gp, train_aw, train_gw, train_labels, batch_siz
 
 def evaluate(model, test_ap, test_gp, test_aw, test_gw, test_labels, verbose=2):
     test_loss, test_accuracy = model.evaluate([test_ap, test_gp, test_aw, test_gw], test_labels, verbose=verbose)
-    return model, test_loss, test_accuracy
+    return test_loss, test_accuracy
