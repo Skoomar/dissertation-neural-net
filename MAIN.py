@@ -68,8 +68,8 @@ def simple_run(make_confusion_matrix=False):
         print("Subject " + subject_id)
         # output += "\n\nSubject" + subject_id
         train_x, train_y, test_x, test_y, val_x, val_y, label_encoder = preprocess.preprocess_subject_train_test_val(
-            'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/16' + subject_id + '_merged_data.txt',
-            split=[0.6, 0.2, 0.2],
+            'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/16' + subject_id + '_merged_data.txt', window_step=80,
+            split=[0.7, 0.2, 0.1],
             random_split=False)
 
         if train_y.shape[1] != 18:
@@ -77,10 +77,10 @@ def simple_run(make_confusion_matrix=False):
             continue
 
         trained_model = models_spec.train_model(model, train_x, train_y, batch_size=32, epochs=25, verbose=1)
-        evaluated_model, loss, accuracy = models_spec.evaluate_model(trained_model, test_x, test_y)
+        loss, accuracy = models_spec.evaluate_model(trained_model, test_x, test_y)
         print("Subject ID " + subject_id + ":", accuracy, "\n")
 
-        pred_y = evaluated_model.predict_classes(val_x)
+        pred_y = trained_model.predict_classes(val_x)
         decoded_pred_y = label_encoder.inverse_transform(pred_y)
         decoded_val_y = evaluation.decode_labels(val_y, label_encoder)
         non_hot_val_y = evaluation.undo_one_hot_encoding(val_y)
@@ -183,10 +183,13 @@ def evaluate_cnn():
     loss, accuracy = models_spec.evaluate_model(model, x, y)
     print('CNN Accuracy:', accuracy)
 
-
+# TODO: test difference between overlap and non-overlap windows cos this paper says overlap is better for subject-dependent CV
+# overlap makes a difference in initial training but after transfer-learn doesn't make a difference
+# lets do half-overlap cos it makes training quicker
 def deep_sense_run():
+    # don't want window overlap cos want model to be able to classify seconds of data, not a continuous stream
     ap, gp, aw, gw, labels, label_encoder = preprocess.leave_one_out_cv_by_sensor(
-        'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge', '1600')
+        'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge', '1600', window_step=80)
 
     print("1:", ap.shape, gp.shape, aw.shape, gw.shape, labels.shape)
 
@@ -208,7 +211,33 @@ def deep_sense_run():
     print('Saved as ' + model_path)
 
 
+def deep_sense_test_run():
+    train_data, test_data, label_encoder = preprocess.preprocess_subject_by_sensor_train_test(
+        'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt', window_step=80,
+        split_ratio=0.7,
+        random_split=False)
+    train_ap = train_data['ap']
+    train_gp = train_data['gp']
+    train_aw = train_data['aw']
+    train_gw = train_data['gw']
+    train_labels = train_data['labels']
+    test_ap = test_data['ap']
+    test_gp = test_data['gp']
+    test_aw = test_data['aw']
+    test_gw = test_data['gw']
+    test_labels = test_data['labels']
+    batch_size = 64
+    model = myDeepSense.u_deep_sense(train_ap.shape[1:], 18, batch_size=batch_size)
+    print("Training")
+    trained_model = myDeepSense.train(model, train_ap, train_gp, train_aw, train_gw, train_labels,
+                                      batch_size=batch_size, epochs=25, verbose=1)
+    loss, accuracy = myDeepSense.evaluate(trained_model, test_ap, test_gp, test_aw, test_gw, test_labels)
+    print("Accuracy:", accuracy)
+
+
 def transfer_learn():
+    # TODO: talk about overlapping in the initial training vs in the new subject
+    # in transfer learning do an overlap cos the stuff in that paper said subject-dependent CV is better with overlap
     train_data, test_data, label_encoder = preprocess.preprocess_subject_by_sensor_train_test(
         'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt', window_step=80,
         split_ratio=0.25,
@@ -224,7 +253,7 @@ def transfer_learn():
     test_gw = test_data['gw']
     test_labels = test_data['labels']
 
-    original_model = tf.keras.models.load_model('saved_models/uDeepSense_loocv1600')
+    original_model = tf.keras.models.load_model('saved_models/uDeepSense_loocv1600_no_overlap')
     print('Evaluating')
     loss, accuracy = myDeepSense.evaluate(original_model, test_ap, test_gp, test_aw, test_gw, test_labels)
     print("original_model Accuracy:", accuracy)
@@ -262,6 +291,7 @@ def transfer_learn():
 
 # simple_run()
 # deep_sense_run()
-# transfer_learn()
+# deep_sense_test_run()
+transfer_learn()
 # cnn_full_data()
 # evaluate_cnn()

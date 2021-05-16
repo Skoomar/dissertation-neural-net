@@ -77,7 +77,9 @@ def u_deep_sense(input_shape=(80, 3), num_classes=18, batch_size=64):
     # print("sum_rnn:",sum_rnn_output)
     # # avg_rnn_output = sum_rnn_output / tf.tile(length, [1, num_cells])
 
-    # gru = layers.GRU(18, batch_input_shape=(batch_size, input_shape[0], 18), dropout=0.5)(merge_output)
+    # TODO: mention having a single GRU layer was more 5% accurate than having two
+    # gru1 = layers.GRU(36, dropout=0.5, return_sequences=True)(merge_output)
+    # gru2 = layers.GRU(36, dropout=0.5)(gru1)
     gru = layers.GRU(36, dropout=0.5)(merge_output)
 
     output = layers.Dense(num_classes, activation='softmax')(gru)
@@ -110,6 +112,7 @@ def train(model, train_ap, train_gp, train_aw, train_gw, train_labels, batch_siz
               epochs=epochs,
               # callbacks=callbacks_list,
               # validation_data=(test_x, testy_y_hot),
+              # validation_split=0.1,
               verbose=verbose)
     return model
 
