@@ -304,7 +304,8 @@ def normalise_and_encode_activities(data, label_encoder=None):
         Returns:
             data (Pandas DataFrame): the normalised dataset
             label_encoder: if no LabelEncoder is initially passed in, returns the new one fit on this data, else
-                            returns the same one passed in
+                            returns the same one passed in. Is later used to convert activity labels back
+                            when evaluating performance
     """
     data['x-axis_accel_phone'] = feature_normalise(data['x-axis_accel_phone'])
     data['y-axis_accel_phone'] = feature_normalise(data['y-axis_accel_phone'])

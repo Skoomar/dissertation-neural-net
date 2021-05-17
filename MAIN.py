@@ -22,38 +22,6 @@ for device in gpu_devices:
     tf.config.experimental.set_memory_growth(device, True)
 
 pd.options.display.float_format = '{:.1f}'.format
-plt.style.use('ggplot')
-
-
-def plot_axis(ax, x, y, title):
-    ax.plot(x, y)
-    ax.set_title(title)
-    ax.xaxis.set_visible(False)
-    ax.set_ylim([min(y) - np.std(y), max(y) + np.std(y)])
-    ax.set_xlim([min(x), max(x)])
-    ax.grid(True)
-
-
-def plot_activity(activity, data):
-    fig, (ax0, ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8, ax9, ax10, ax11) = plt.subplots(nrows=12, figsize=(15, 10),
-                                                                                       sharex=True)
-    plot_axis(ax0, data['timestamp'], data['x-axis_accel_phone'], 'xap')
-    plot_axis(ax1, data['timestamp'], data['y-axis_accel_phone'], 'yap')
-    plot_axis(ax2, data['timestamp'], data['z-axis_accel_phone'], 'zap')
-    plot_axis(ax3, data['timestamp'], data['x-axis_gyro_phone'], 'xgp')
-    plot_axis(ax4, data['timestamp'], data['y-axis_gyro_phone'], 'ygp')
-    plot_axis(ax5, data['timestamp'], data['z-axis_gyro_phone'], 'zgp')
-    plot_axis(ax6, data['timestamp'], data['x-axis_accel_watch'], 'xaw')
-    plot_axis(ax7, data['timestamp'], data['y-axis_accel_watch'], 'yaw')
-    plot_axis(ax8, data['timestamp'], data['z-axis_accel_watch'], 'zaw')
-    plot_axis(ax9, data['timestamp'], data['x-axis_gyro_watch'], 'xgw')
-    plot_axis(ax10, data['timestamp'], data['y-axis_gyro_watch'], 'ygw')
-    plot_axis(ax11, data['timestamp'], data['z-axis_gyro_watch'], 'zgw')
-
-    plt.subplots_adjust(hspace=0.2)
-    fig.suptitle(activity)
-    plt.subplots_adjust(top=0.90)
-    plt.show()
 
 
 def simple_run(make_confusion_matrix=False):
@@ -68,9 +36,11 @@ def simple_run(make_confusion_matrix=False):
         print("Subject " + subject_id)
         # output += "\n\nSubject" + subject_id
         train_x, train_y, test_x, test_y, val_x, val_y, label_encoder = preprocess.preprocess_subject_train_test_val(
-            'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/16' + subject_id + '_merged_data.txt', window_step=80,
+            'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/16' + subject_id + '_merged_data.txt', window_size=80,
+            window_step=40,
             split=[0.7, 0.2, 0.1],
             random_split=False)
+        print(train_x.shape)
 
         if train_y.shape[1] != 18:
             print("Subject only has:", train_y.shape[1], "features")
@@ -162,7 +132,7 @@ def cnn_full_data():
     model = models_spec.paper_cnn(x.shape[1:], 18)
     print("Training")
     trained_model = models_spec.train_model(model, x, y,
-                                      batch_size=batch_size, epochs=25, verbose=1)
+                                            batch_size=batch_size, epochs=25, verbose=1)
     print('Saving model')
     file_path = 'saved_models/CNN'
     saved = False
@@ -177,17 +147,18 @@ def cnn_full_data():
 
 
 def evaluate_cnn():
-    x, y, label_encoder = preprocess.preprocess_subject('C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt', window_step=80)
+    x, y, label_encoder = preprocess.preprocess_subject(
+        'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt', window_step=80)
     model = tf.keras.models.load_model('saved_models/CNN1')
     print('Evaluating')
     loss, accuracy = models_spec.evaluate_model(model, x, y)
     print('CNN Accuracy:', accuracy)
 
+
 # TODO: test difference between overlap and non-overlap windows cos this paper says overlap is better for subject-dependent CV
 # overlap makes a difference in initial training but after transfer-learn doesn't make a difference
-# lets do half-overlap cos it makes training quicker
+# lets do NO-overlap cos it makes training quicker
 def deep_sense_run():
-    # don't want window overlap cos want model to be able to classify seconds of data, not a continuous stream
     ap, gp, aw, gw, labels, label_encoder = preprocess.leave_one_out_cv_by_sensor(
         'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge', '1600', window_step=80)
 
@@ -258,8 +229,15 @@ def transfer_learn():
     loss, accuracy = myDeepSense.evaluate(original_model, test_ap, test_gp, test_aw, test_gw, test_labels)
     print("original_model Accuracy:", accuracy)
 
-    for i in range(len(original_model.layers) - 2):
-        original_model.layers[i].trainable = False
+    original_pred_labels = original_model.predict([test_ap, test_gp, test_aw, test_gw])
+    original_pred_labels = np.argmax(original_pred_labels, axis=1)
+    decoded_test_labels = evaluation.undo_one_hot_encoding(test_labels)
+
+    evaluation.plot_confusion_matrix('Pre-transfer-learning LOOCV on Subject 1600', decoded_test_labels,
+                                     original_pred_labels, label_encoder)
+
+    # for i in range(len(original_model.layers) - 2):
+    #     original_model.layers[i].trainable = False
 
     # TODO: see if the transfer learning can be be just as accurate with a low proportion of train:test data
     # around 0.25/0.3 split_ratio seems to be the sweet spot where accuracy is not lost too much
@@ -273,12 +251,12 @@ def transfer_learn():
     loss, accuracy = myDeepSense.evaluate(trained_model, test_ap, test_gp, test_aw, test_gw, test_labels)
     print("Accuracy:", accuracy)
 
-    #################################
     pred_labels = trained_model.predict([test_ap, test_gp, test_aw, test_gw])
     pred_labels = np.argmax(pred_labels, axis=1)
     decoded_test_labels = evaluation.undo_one_hot_encoding(test_labels)
 
-    evaluation.plot_confusion_matrix('LOOCV on Subject 1600', decoded_test_labels, pred_labels, label_encoder)
+    evaluation.plot_confusion_matrix('Transfer-Learn LOOCV on Subject 1600', decoded_test_labels, pred_labels,
+                                     label_encoder)
 
 
 
@@ -289,9 +267,9 @@ def transfer_learn():
 # np.set_printoptions(threshold=np.inf)
 
 
-# simple_run()
+simple_run()
 # deep_sense_run()
 # deep_sense_test_run()
-transfer_learn()
+# transfer_learn()
 # cnn_full_data()
 # evaluate_cnn()
