@@ -70,15 +70,17 @@ def pearson_correlation(data1, data2):
     print("pearson_gwy:", pearson_gwy)
     print("pearson_gwz:", pearson_gwz)
 
-    mean_pearsonr = (pearson_apy + pearson_apz + pearson_gpx + pearson_gpy + pearson_gpz + pearson_awx + pearson_awy + pearson_awz + pearson_gwx + pearson_gwy + pearson_gwz) / 12
+    mean_pearsonr = (
+                                pearson_apy + pearson_apz + pearson_gpx + pearson_gpy + pearson_gpz + pearson_awx + pearson_awy + pearson_awz + pearson_gwx + pearson_gwy + pearson_gwz) / 12
     print("mean:", mean_pearsonr)
 
 
 def main():
+    DATA_PATH = 'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/'
     subject1 = '1625'
     subject2 = '1625'
     dataset1 = preprocess.read_data(
-        'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/' + subject1 + '_merged_data.txt')
+        DATA_PATH + subject1 + '_merged_data.txt')
     # dataset2 = preprocess.read_data(
     #     'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/' + subject2 + '_merged_data.txt')
     activity1 = 'O'
@@ -90,7 +92,6 @@ def main():
     plot_activity('Subject ' + subject1 + ' doing Activity ' + activity1, activity_subset1)
     plot_activity('Subject ' + subject2 + ' doing Activity ' + activity2, activity_subset2)
     plot_activity('Subject ' + subject2 + ' doing Activity ' + activity3, activity_subset3)
-
 
 
 main()

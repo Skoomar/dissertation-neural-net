@@ -29,11 +29,13 @@ def uTransferL(input_shape=(80, 3), num_classes=18):
     """My model based on the DeepSense framework and D. Buffelli's adaptation of it
         Uses the TensorFlow Functional API to use parallel inputs and parallel layers
     """
+    # input from accel and gyro of phone and watch
     ap = layers.Input(shape=input_shape)
     gp = layers.Input(shape=input_shape)
     aw = layers.Input(shape=input_shape)
     gw = layers.Input(shape=input_shape)
 
+    # Individual Layers
     num_filters = 64
     accel_phone_conv = individual_conv_layers(ap, num_filters)
     gyro_phone_conv = individual_conv_layers(gp, num_filters)
@@ -43,6 +45,7 @@ def uTransferL(input_shape=(80, 3), num_classes=18):
     individual_output = layers.concatenate([accel_phone_conv, gyro_phone_conv, accel_watch_conv, gyro_watch_conv], 2)
     individual_output = layers.Dropout(0.2)(individual_output)
 
+    # Merge layers
     merge_conv1 = layers.Conv2D(num_filters, [4, 8], padding='same')(individual_output)
     merge_conv1 = layers.BatchNormalization()(merge_conv1)
     merge_conv1 = layers.Activation('relu')(merge_conv1)
@@ -60,6 +63,7 @@ def uTransferL(input_shape=(80, 3), num_classes=18):
     merge_conv3_shape = merge_conv3.get_shape()
     merge_output = tf.reshape(merge_conv3, [-1, merge_conv3_shape[1], merge_conv3_shape[2] * merge_conv3_shape[3]])
 
+    # Recurrent layer
     gru = layers.GRU(80, dropout=0.5)(merge_output)
 
     output = layers.Dense(num_classes, activation='softmax')(gru)
