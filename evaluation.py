@@ -1,8 +1,9 @@
-import tensorflow as tf
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 import seaborn as sns
+import tensorflow as tf
+from sklearn.metrics import f1_score
 
 
 def undo_one_hot_encoding(encoded):

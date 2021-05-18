@@ -1,9 +1,10 @@
+import math
+
 import numpy as np
+import pandas as pd
 from keras.utils import np_utils
 from scipy import stats
 from sklearn import preprocessing
-import math
-import pandas as pd
 
 
 def read_data(file_path):
@@ -462,6 +463,7 @@ def preprocess_subject_by_sensor_train_test(data_path, window_size=80, window_st
     dataset, label_encoder = normalise_and_encode_activities(dataset, label_encoder)
 
     ap, gp, aw, gw, labels = create_windows_by_sensor(dataset, window_size, window_step)
+
     train_ap, train_gp, train_aw, train_gw, train_labels, test_ap, test_gp, test_aw, test_gw, test_labels = split_train_test_by_sensor(
         ap, gp, aw, gw, labels, split_ratio, random_split)
 

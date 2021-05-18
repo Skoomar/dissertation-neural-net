@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.stats import pearsonr
+
 import preprocess
 
 plt.style.use('ggplot')
@@ -38,7 +39,6 @@ def plot_activity(title, data):
 
 
 def pearson_correlation(data1, data2):
-
     if len(data1) > len(data2):
         data1 = data1.head(len(data2))
     elif len(data2) > len(data1):
@@ -69,14 +69,18 @@ def pearson_correlation(data1, data2):
     print("pearson_gwy:", pearson_gwy)
     print("pearson_gwz:", pearson_gwz)
 
-    mean_pearsonr = (pearson_apy + pearson_apz + pearson_gpx + pearson_gpy + pearson_gpz + pearson_awx + pearson_awy + pearson_awz + pearson_gwx + pearson_gwy + pearson_gwz) / 12
+    mean_pearsonr = (
+                                pearson_apy + pearson_apz + pearson_gpx + pearson_gpy + pearson_gpz + pearson_awx + pearson_awy + pearson_awz + pearson_gwx + pearson_gwy + pearson_gwz) / 12
     print("mean:", mean_pearsonr)
+
 
 def main():
     subject1 = '1600'
     subject2 = '1601'
-    dataset1 = preprocess.read_data('C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/'+subject1+'_merged_data.txt')
-    dataset2 = preprocess.read_data('C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/'+subject2+'_merged_data.txt')
+    dataset1 = preprocess.read_data(
+        'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/' + subject1 + '_merged_data.txt')
+    dataset2 = preprocess.read_data(
+        'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/' + subject2 + '_merged_data.txt')
     activity = 'C'
     activity_subset1 = dataset1[dataset1['activity'] == activity]
     activity_subset2 = dataset2[dataset2['activity'] == activity]
@@ -85,8 +89,8 @@ def main():
 
     print(activity_subset1.loc[:1784])
     # pearson_correlation(activity_subset1, activity_subset2)
-    activity_subset3 = activity_subset1.loc[:len(activity_subset1)//2]
-    activity_subset4 = activity_subset1.loc[len(activity_subset1)//2:]
+    activity_subset3 = activity_subset1.loc[:len(activity_subset1) // 2]
+    activity_subset4 = activity_subset1.loc[len(activity_subset1) // 2:]
     pearson_correlation(activity_subset3, activity_subset4)
 
 
