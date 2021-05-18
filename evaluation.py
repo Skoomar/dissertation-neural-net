@@ -51,3 +51,9 @@ def plot_confusion_matrix(title, true_y, pred_y, label_encoder):
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
     plt.show()
+
+
+def calculate_f1_score(true_y, pred_y, label_encoder):
+    classes = [i for i in range(18)]
+    score = f1_score(true_y, pred_y, labels=classes, average='macro')
+    return score

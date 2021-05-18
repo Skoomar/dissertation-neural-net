@@ -172,33 +172,37 @@ def deep_sense_test_run():
 
 
 def deep_sense_run():
+    left_out = '1648'
     ap, gp, aw, gw, labels, label_encoder = preprocess.leave_one_out_cv_by_sensor(
-        'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge', '1600', window_step=80)
+        'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge', left_out, window_step=80)
 
     print("1:", ap.shape, gp.shape, aw.shape, gw.shape, labels.shape)
 
     batch_size = 64
-    model = uModel.uModel(ap.shape[1:], 18, batch_size=batch_size)
+    model = uModel.uModel(ap.shape[1:], 18)
     print("Training")
     trained_model = uModel.train(model, ap, gp, aw, gw, labels,
                                  batch_size=batch_size, epochs=25, verbose=1)
     print('Saving model')
-    file_path = 'saved_models/uDeepSense'
+    model_path = 'saved_models/uDeepSense_loocv' + left_out
     saved = False
     i = 1
     while not saved:
-        if not os.path.exists(file_path + str(i)):
-            model_path = file_path + str(i)
-            trained_model.save(model_path)
-            saved = True
-        i += 1
+        if os.path.exists(model_path):
+            print("Model already exists here... Overwrite?")
+            overwrite = input("Overwrite?")
+            if overwrite != 'y':
+                break
+        trained_model.save(model_path)
+        saved = True
     print('Saved as ' + model_path)
 
 
 def transfer_learn():
+    left_out = '1619'
     # around 0.25/0.3 split_ratio of train:test data seems to be the sweet spot where accuracy is not lost too much
     train_data, test_data, label_encoder = preprocess.preprocess_subject_by_sensor_train_test(
-        'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/1600_merged_data.txt', window_step=80,
+        'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/' + left_out + '_merged_data.txt', window_step=80,
         split_ratio=0.3,
         random_split=False)
     train_ap = train_data['ap']
@@ -212,7 +216,7 @@ def transfer_learn():
     test_gw = test_data['gw']
     test_labels = test_data['labels']
 
-    original_model = tf.keras.models.load_model('saved_models/uDeepSense_loocv_1600')
+    original_model = tf.keras.models.load_model('saved_models/uDeepSense_loocv' + left_out)
 
     # evaluate the model on new data before re-training
     print('Evaluating')
@@ -221,9 +225,9 @@ def transfer_learn():
 
     original_pred_labels = original_model.predict([test_ap, test_gp, test_aw, test_gw])
     original_pred_labels = np.argmax(original_pred_labels, axis=1)
-    decoded_test_labels = evaluation.undo_one_hot_encoding(test_labels)
+    true_y = evaluation.undo_one_hot_encoding(test_labels)
 
-    evaluation.plot_confusion_matrix('Pre-transfer-learning LOOCV on Subject 1600', decoded_test_labels,
+    evaluation.plot_confusion_matrix('Pre-transfer-learning LOOCV on Subject ' + left_out, true_y,
                                      original_pred_labels, label_encoder)
 
     transfer_learn_model = uModel.transfer_learn_model(original_model)
@@ -234,12 +238,13 @@ def transfer_learn():
     loss, accuracy = uModel.evaluate(trained_model, test_ap, test_gp, test_aw, test_gw, test_labels)
     print("Accuracy:", accuracy)
 
-    pred_labels = trained_model.predict([test_ap, test_gp, test_aw, test_gw])
-    pred_labels = np.argmax(pred_labels, axis=1)
-    decoded_test_labels = evaluation.undo_one_hot_encoding(test_labels)
+    pred_y = trained_model.predict([test_ap, test_gp, test_aw, test_gw])
+    pred_y = np.argmax(pred_y, axis=1)
+    true_y = evaluation.undo_one_hot_encoding(test_labels)
 
-    evaluation.plot_confusion_matrix('Transfer-Learn LOOCV on Subject 1600', decoded_test_labels, pred_labels,
+    evaluation.plot_confusion_matrix('Transfer-Learn LOOCV on Subject ' + left_out, true_y, pred_y,
                                      label_encoder)
+    print("F1-Score: ", evaluation.calculate_f1_score(true_y, pred_y, label_encoder))
 
 
 # pd.set_option('display.max_columns', None)

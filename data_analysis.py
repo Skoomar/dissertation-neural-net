@@ -17,6 +17,7 @@ def plot_axis(ax, x, y, title):
 
 
 def plot_activity(title, data):
+    """Plot the signal for each sensor in the given user's data for the given activity"""
     fig, (ax0, ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8, ax9, ax10, ax11) = plt.subplots(nrows=12, figsize=(15, 10),
                                                                                        sharex=True)
     plot_axis(ax0, data['timestamp'], data['x-axis_accel_phone'], 'x-axis Phone Accelerometer')
@@ -69,29 +70,23 @@ def pearson_correlation(data1, data2):
     print("pearson_gwy:", pearson_gwy)
     print("pearson_gwz:", pearson_gwz)
 
-    mean_pearsonr = (
-                                pearson_apy + pearson_apz + pearson_gpx + pearson_gpy + pearson_gpz + pearson_awx + pearson_awy + pearson_awz + pearson_gwx + pearson_gwy + pearson_gwz) / 12
+    mean_pearsonr = (pearson_apy + pearson_apz + pearson_gpx + pearson_gpy + pearson_gpz + pearson_awx + pearson_awy + pearson_awz + pearson_gwx + pearson_gwy + pearson_gwz) / 12
     print("mean:", mean_pearsonr)
 
 
 def main():
-    subject1 = '1600'
-    subject2 = '1601'
+    subject1 = '1618'
+    subject2 = '1650'
     dataset1 = preprocess.read_data(
         'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/' + subject1 + '_merged_data.txt')
     dataset2 = preprocess.read_data(
         'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/' + subject2 + '_merged_data.txt')
-    activity = 'C'
+    activity = 'J'
     activity_subset1 = dataset1[dataset1['activity'] == activity]
     activity_subset2 = dataset2[dataset2['activity'] == activity]
     plot_activity('Subject ' + subject1 + ' doing Activity ' + activity, activity_subset1)
     plot_activity('Subject ' + subject2 + ' doing Activity ' + activity, activity_subset2)
 
-    print(activity_subset1.loc[:1784])
-    # pearson_correlation(activity_subset1, activity_subset2)
-    activity_subset3 = activity_subset1.loc[:len(activity_subset1) // 2]
-    activity_subset4 = activity_subset1.loc[len(activity_subset1) // 2:]
-    pearson_correlation(activity_subset3, activity_subset4)
 
 
 main()
