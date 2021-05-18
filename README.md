@@ -1,7 +1,10 @@
 Use functions in MAIN.py to run the models
 
-Make sure to input the path to the merged WISDM dataset.
-You can either produce it yourself by putting the original dataset into merge_wisdm_sensor_data.py or use the set given in the submission folder
+Produce the merged WISDM set by downloading the original one and putting the path into merge_wisdm_sensor_data.py
+
+WISDM dataset: https://archive.ics.uci.edu/ml/datasets/WISDM+Smartphone+and+Smartwatch+Activity+and+Biometrics+Dataset+
+
+Then put the path to that merged set into MAIN.py
 
 Python 3.7.10
 

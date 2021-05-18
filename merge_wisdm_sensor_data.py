@@ -6,6 +6,12 @@ pd.set_option('display.max_columns', None)
 pd.set_option('display.width', None)
 pd.set_option('display.max_colwidth', None)
 
+# path to original wisdm dataset
+DATA_PATH = 'C:/Users/umar_/prbx-data/wisdm-dataset/'
+
+# path to directory to output merged data to - make sure this directory already exists before running
+OUT_DIR = 'wisdm-merged/'
+
 
 def convert_to_float(x):
     try:
@@ -157,10 +163,10 @@ def merge_phone_watch_data(phone, watch):
 
 def merge_subject_data(subject_id):
     """Merge accelerometer and gyroscope from both phone and watch for the given subject"""
-    phone_accel = read_data('wisdm-dataset/raw/phone/accel/data_16' + subject_id + '_accel_phone.txt')
-    phone_gyro = read_data('wisdm-dataset/raw/phone/gyro/data_16' + subject_id + '_gyro_phone.txt')
-    watch_accel = read_data('wisdm-dataset/raw/watch/accel/data_16' + subject_id + '_accel_watch.txt')
-    watch_gyro = read_data('wisdm-dataset/raw/watch/gyro/data_16' + subject_id + '_gyro_watch.txt')
+    phone_accel = read_data(DATA_PATH + 'raw/phone/accel/data_16' + subject_id + '_accel_phone.txt')
+    phone_gyro = read_data(DATA_PATH + 'raw/phone/gyro/data_16' + subject_id + '_gyro_phone.txt')
+    watch_accel = read_data(DATA_PATH + 'raw/watch/accel/data_16' + subject_id + '_accel_watch.txt')
+    watch_gyro = read_data(DATA_PATH + 'raw/watch/gyro/data_16' + subject_id + '_gyro_watch.txt')
 
     phone_merge = merge_accel_gyro_data(phone_accel, phone_gyro, 'phone')
     watch_merge = merge_accel_gyro_data(watch_accel, watch_gyro, 'watch')
@@ -183,19 +189,19 @@ def merge_single_device(device, write_to_csv=False):
             str_id = '0' + str_id
         print("Processing subject " + str_id)
         device_accel = read_data(
-            'wisdm-dataset/raw/' + device + '/accel/data_16' + str_id + '_accel_' + device + '.txt')
-        device_gyro = read_data('wisdm-dataset/raw/' + device + '/gyro/data_16' + str_id + '_gyro_' + device + '.txt')
+            DATA_PATH + 'raw/' + device + '/accel/data_16' + str_id + '_accel_' + device + '.txt')
+        device_gyro = read_data(DATA_PATH + 'raw/' + device + '/gyro/data_16' + str_id + '_gyro_' + device + '.txt')
         device_data = merge_accel_gyro_data(device_accel, device_gyro, device)
         merged_data = merged_data.append(device_data, ignore_index=True)
         # write the particular subject's data to a separate CSV
         if write_to_csv:
             print("Writing to CSV...")
-            device_data.to_csv('wisdm-merged/subject_' + device + '_merge/16' + str_id + '_' + device + '_merge.txt')
+            device_data.to_csv(OUT_DIR + 'subject_' + device + '_merge/16' + str_id + '_' + device + '_merge.txt')
     merged_data.dropna(axis=0, how='any').reset_index(drop=True)
     # write all data for this device merged from every subject to one CSV file
     if write_to_csv:
         print("Writing to CSV...")
-        merged_data.to_csv('wisdm-merged/' + device + '_merge.txt')
+        merged_data.to_csv(OUT_DIR + '' + device + '_merge.txt')
 
 
 def merge_all_wisdm_by_subject(write_to_csv=False):
@@ -209,7 +215,7 @@ def merge_all_wisdm_by_subject(write_to_csv=False):
         subject_data = merge_subject_data(str_id)
         if write_to_csv:
             print("Writing to CSV...")
-            subject_data.to_csv('wisdm-merged/16' + str_id + '_merged_data.txt')
+            subject_data.to_csv(OUT_DIR + '16' + str_id + '_merged_data.txt')
 
 
 def merge_all_wisdm_combined(write_to_csv=False):
@@ -229,10 +235,9 @@ def merge_all_wisdm_combined(write_to_csv=False):
     complete_merge.dropna(axis=0, how='any').reset_index(drop=True)
     if write_to_csv:
         print("Writing to CSV...")
-        complete_merge.to_csv('wisdm-merged/complete_merge.txt')
+        complete_merge.to_csv(OUT_DIR + 'complete_merge.txt')
     return complete_merge
 
 
-def main():
-    merge_all_wisdm_by_subject()
-    # merge_all_wisdm_combined()
+if __name__ == '__main__':
+    merge_all_wisdm_by_subject(True)
