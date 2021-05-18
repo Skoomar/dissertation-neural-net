@@ -75,17 +75,21 @@ def pearson_correlation(data1, data2):
 
 
 def main():
-    subject1 = '1618'
-    subject2 = '1650'
+    subject1 = '1625'
+    subject2 = '1625'
     dataset1 = preprocess.read_data(
         'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/' + subject1 + '_merged_data.txt')
-    dataset2 = preprocess.read_data(
-        'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/' + subject2 + '_merged_data.txt')
-    activity = 'J'
-    activity_subset1 = dataset1[dataset1['activity'] == activity]
-    activity_subset2 = dataset2[dataset2['activity'] == activity]
-    plot_activity('Subject ' + subject1 + ' doing Activity ' + activity, activity_subset1)
-    plot_activity('Subject ' + subject2 + ' doing Activity ' + activity, activity_subset2)
+    # dataset2 = preprocess.read_data(
+    #     'C:/Users/umar_/prbx-data/wisdm-merged/subject_full_merge/' + subject2 + '_merged_data.txt')
+    activity1 = 'O'
+    activity2 = 'M'
+    activity3 = 'S'
+    activity_subset1 = dataset1[dataset1['activity'] == activity1]
+    activity_subset2 = dataset1[dataset1['activity'] == activity2]
+    activity_subset3 = dataset1[dataset1['activity'] == activity3]
+    plot_activity('Subject ' + subject1 + ' doing Activity ' + activity1, activity_subset1)
+    plot_activity('Subject ' + subject2 + ' doing Activity ' + activity2, activity_subset2)
+    plot_activity('Subject ' + subject2 + ' doing Activity ' + activity3, activity_subset3)
 
 
 

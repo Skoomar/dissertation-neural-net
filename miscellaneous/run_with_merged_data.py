@@ -234,6 +234,6 @@ cnn_model = CNN1.create_model()
 trained_model = CNN1.train_model(cnn_model, train_x, train_y_hot)
 print(CNN1.evaluate_model(trained_model, test_x, test_y_hot))
 # for i in range(10):
-#     trained_model = benchmarkCNN.train_model(cnn_model, train_x, train_y_hot, verbose=0)
-#     print(benchmarkCNN.evaluate_model(trained_model, test_x, test_y_hot))
+#     trained_model = benchmarkCNN_loocv1600.train_model(cnn_model, train_x, train_y_hot, verbose=0)
+#     print(benchmarkCNN_loocv1600.evaluate_model(trained_model, test_x, test_y_hot))
 

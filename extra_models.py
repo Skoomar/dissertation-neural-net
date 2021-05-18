@@ -1,8 +1,8 @@
 from tensorflow.keras import models, layers
 
 
-def paper_cnn(input_shape=(80, 12), num_classes=18):
-    """Model taken from B. Oluwalade's et al., “Human Activity Recognition using Deep Learning Models on Smartphones
+def benchmark_cnn(input_shape=(80, 12), num_classes=18):
+    """CNN Model from B. Oluwalade's et al., “Human Activity Recognition using Deep Learning Models on Smartphones
         and Smartwatches Sensor Data”"""
     model = models.Sequential()
     model.add(layers.Conv1D(128, 10, activation='relu', input_shape=input_shape))

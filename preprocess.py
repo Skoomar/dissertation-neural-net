@@ -229,8 +229,6 @@ def split_train_test_by_sensor(accel_phone, gyro_phone, accel_watch, gyro_watch,
     return train_ap, train_gp, train_aw, train_gw, train_labels, test_ap, test_gp, test_aw, test_gw, test_labels
 
 
-
-
 def normalise_and_encode_activities(data, label_encoder=None):
     """Normalise each column of sensor data and encode the activities with numerical labels
 
@@ -289,9 +287,6 @@ def preprocess_subject(data_path, window_size=80, window_step=80, label_encoder=
 
     windows, labels = create_windows_and_labels(dataset, window_size, window_step)
 
-    # u, count = np.unique(labels, return_counts=True)
-    # print(len(u), count)
-
     # convert all data to float32 so TF can read it
     x = windows.astype('float32')
     y = labels.astype('float32')
@@ -303,12 +298,12 @@ def preprocess_subject(data_path, window_size=80, window_step=80, label_encoder=
     return x, y_hot, label_encoder
 
 
-def preprocess_subject_train_test(data_path, window_size=80, window_step=80, split=0.7,
+def preprocess_subject_train_test(data_path, window_size=80, window_step=80, split_ratio=0.7,
                                   random_split=True):
     """Get all data for the given subject, process it and split it into training and testing sets for the model
 
         Parameters:
-            split (float): the fraction of data to be split into training/testing data
+            split_ratio (float): the fraction of data to be split into training/testing data
             random_split (bool): whether train/test split should be random or not
     """
     dataset = read_data(data_path)
@@ -317,7 +312,7 @@ def preprocess_subject_train_test(data_path, window_size=80, window_step=80, spl
 
     windows, labels = create_windows_and_labels(dataset, window_size, window_step)
 
-    train_x, train_y, test_x, test_y = split_train_test(windows, labels, split, random_split)
+    train_x, train_y, test_x, test_y = split_train_test(windows, labels, split_ratio, random_split)
 
     # convert all data to float32 so TF can read it
     train_x = train_x.astype('float32')
@@ -421,8 +416,6 @@ def preprocess_subject_by_sensor_train_test(data_path, window_size=80, window_st
     return train_data, test_data, label_encoder
 
 
-
-
 def leave_one_out_cv(data_path, left_out, window_size=80, window_step=80):
     """Preprocess data from all subjects except one for Leave-One-Out Cross-Validation
 
@@ -463,11 +456,9 @@ def leave_one_out_cv(data_path, left_out, window_size=80, window_step=80):
         file_path = data_path + '/' + subject_id + '_merged_data.txt'
         subject_x, subject_y, subject_le = preprocess_subject(file_path, window_size, window_step, label_encoder)
 
-        print(subject_x.shape, subject_y.shape)
         x = np.append(x, subject_x, axis=0)
         y = np.append(y, subject_y, axis=0)
 
-        print(x.shape, y.shape)
     return x, y, label_encoder
 
 
